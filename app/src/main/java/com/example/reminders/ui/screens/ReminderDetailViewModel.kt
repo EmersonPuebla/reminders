@@ -17,16 +17,25 @@ class ReminderDetailViewModel(private val remindersRepository: RemindersReposito
     var reminderUiState by mutableStateOf(ReminderUiState())
         private set
 
+    private var initialUiState = ReminderUiState()
+
+    val hasUnsavedChanges: Boolean
+        get() = reminderUiState != initialUiState
+
     private val reminderId: Int? = savedStateHandle["reminderId"]
 
     init {
         if (reminderId != null) {
             viewModelScope.launch {
-                reminderUiState = remindersRepository.getReminder(reminderId)
+                val loadedState = remindersRepository.getReminder(reminderId)
                     .filterNotNull()
                     .first()
                     .toReminderUiState()
+                reminderUiState = loadedState
+                initialUiState = loadedState
             }
+        } else {
+            initialUiState = ReminderUiState()
         }
     }
 

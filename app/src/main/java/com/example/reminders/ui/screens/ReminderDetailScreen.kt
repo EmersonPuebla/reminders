@@ -47,10 +47,8 @@ fun ReminderDetailScreen(
 
     val audioRecorderHelper = remember { AudioRecorderHelper(context) }
 
-    val hasUnsavedChanges = uiState.title.isNotBlank() || uiState.description.isNotBlank() || uiState.date != 0L || uiState.audioRecordings.isNotEmpty()
-
     fun handleBackNavigation() {
-        if (hasUnsavedChanges) {
+        if (viewModel.hasUnsavedChanges) {
             showExitConfirmationDialog = true
         } else {
             onBack()
