@@ -10,7 +10,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.reminders.ui.screens.* 
+import com.example.reminders.ui.screens.*
 import com.example.reminders.ui.theme.RemindersTheme
 
 class MainActivity : ComponentActivity() {
@@ -38,8 +38,8 @@ fun RemindersApp(themeState: MutableState<Theme>) {
         composable("reminders") {
             ReminderListScreen(
                 onAddReminder = { navController.navigate("create_reminder") },
-                onItemClick = { reminderTitle ->
-                    navController.navigate("view_reminder/$reminderTitle")
+                onItemClick = { reminderId ->
+                    navController.navigate("view_reminder/$reminderId")
                 },
                 onSettingsClick = { navController.navigate("settings") }
             )
@@ -48,14 +48,21 @@ fun RemindersApp(themeState: MutableState<Theme>) {
             ReminderDetailScreen(onBack = { navController.popBackStack() })
         }
         composable(
-            route = "view_reminder/{reminderTitle}",
-            arguments = listOf(navArgument("reminderTitle") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val reminderTitle = backStackEntry.arguments?.getString("reminderTitle") ?: ""
+            route = "view_reminder/{reminderId}",
+            arguments = listOf(navArgument("reminderId") { type = NavType.IntType })
+        ) { 
             ViewReminderScreen(
-                reminderTitle = reminderTitle,
-                onBack = { navController.popBackStack() }
+                onBack = { navController.popBackStack() },
+                onEditClick = { reminderId ->
+                    navController.navigate("edit_reminder/$reminderId")
+                }
             )
+        }
+        composable(
+            route = "edit_reminder/{reminderId}",
+            arguments = listOf(navArgument("reminderId") { type = NavType.IntType })
+        ) {
+            ReminderDetailScreen(onBack = { navController.popBackStack() })
         }
         composable("settings") {
             SettingsScreen(

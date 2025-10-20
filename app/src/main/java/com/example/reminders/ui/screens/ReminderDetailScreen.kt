@@ -1,6 +1,8 @@
 package com.example.reminders.ui.screens
 
 import android.Manifest
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
@@ -17,9 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.reminders.ui.AppViewModelProvider
 import com.example.reminders.utils.AudioRecorderHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -28,19 +33,49 @@ data class AudioRecording(val name: String, val filePath: String)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReminderDetailScreen(onBack: () -> Unit) {
-    var title by remember { mutableStateOf("") }
-    var details by remember { mutableStateOf("") }
-    var isNotifying by remember { mutableStateOf(false) }
-    val selectedDate = remember { mutableStateOf<Long?>(null) }
-    val showDatePicker = remember { mutableStateOf(false) }
-    var audioRecordings by remember { mutableStateOf<List<AudioRecording>>(emptyList()) }
-    var isRecording by remember { mutableStateOf(false) }
-    var recordingToDelete by remember { mutableStateOf<AudioRecording?>(null) }
-    var recordingTimeSeconds by remember { mutableStateOf(0) } // 🕑 Estado para el contador
-
+fun ReminderDetailScreen(
+    onBack: () -> Unit,
+    viewModel: ReminderDetailViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val uiState = viewModel.reminderUiState
     val context = LocalContext.current
+    var isRecording by remember { mutableStateOf(false) }
+    var recordingToDelete by remember { mutableStateOf<String?>(null) }
+    var recordingTimeSeconds by remember { mutableStateOf(0) }
+    var showExitConfirmationDialog by remember { mutableStateOf(false) }
+
     val audioRecorderHelper = remember { AudioRecorderHelper(context) }
+
+    val hasUnsavedChanges = uiState.title.isNotBlank() || uiState.description.isNotBlank() || uiState.date != 0L || uiState.audioUris.isNotEmpty()
+
+    fun handleBackNavigation() {
+        if (hasUnsavedChanges) {
+            showExitConfirmationDialog = true
+        } else {
+            onBack()
+        }
+    }
+
+    BackHandler(onBack = ::handleBackNavigation)
+
+    if (showExitConfirmationDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitConfirmationDialog = false },
+            title = { Text("Descartar cambios") },
+            text = { Text("Si sales, los datos no guardados se perderán.") },
+            confirmButton = {
+                TextButton(onClick = onBack) {
+                    Text("Descartar")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showExitConfirmationDialog = false }) {
+                    Text("Seguir editando")
+                }
+            }
+        )
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -51,27 +86,19 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
         }
     }
 
-    /**
-     * Función de extensión para formatear segundos a MM:SS
-     */
     fun Int.toMMSS(): String {
         val minutes = this / 60
         val seconds = this % 60
         return String.format("%02d\n%02d", minutes, seconds)
     }
 
-    /**
-     * Composable que maneja el contador de tiempo
-     */
     @Composable
     fun RecordingTimer(isRecording: Boolean, onTimeUpdate: (Int) -> Unit) {
-        // Ejecuta el bloque solo cuando isRecording cambia
         LaunchedEffect(isRecording) {
             if (isRecording) {
                 var time = 0
-                // Continuar contando hasta que el LaunchedEffect sea cancelado (isRecording = false)
                 while (isActive) {
-                    delay(1000) // Espera 1 segundo
+                    delay(1000)
                     time++
                     onTimeUpdate(time)
                 }
@@ -79,7 +106,6 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
         }
     }
 
-    // 🔥 IMPORTANTE: Llamada al Composable RecordingTimer para que el tiempo se actualice
     RecordingTimer(isRecording = isRecording) { newTime ->
         recordingTimeSeconds = newTime
     }
@@ -88,13 +114,13 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
         AlertDialog(
             onDismissRequest = { recordingToDelete = null },
             title = { Text("Confirmar eliminación") },
-            text = { Text("¿Estás seguro de que deseas eliminar '${recordingToDelete?.name}'?") },
+            text = { Text("¿Estás seguro de que deseas eliminar este audio?") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         recordingToDelete?.let { recording ->
-                            audioRecordings = audioRecordings - recording
-                            // Aquí podrías añadir lógica para eliminar el archivo físico
+                            val updatedAudioUris = uiState.audioUris - recording
+                            viewModel.updateUiState(uiState.copy(audioUris = updatedAudioUris))
                         }
                         recordingToDelete = null
                     }
@@ -120,28 +146,21 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Button(onClick = onBack) {
+                Button(onClick = ::handleBackNavigation) {
                     Text("Cancelar")
                 }
 
-                // Botón de grabación/detención (CORREGIDO)
                 Button(
                     onClick = {
                         if (isRecording) {
-                            // Lógica para detener la grabación
                             isRecording = false
                             audioRecorderHelper.stopRecording()?.let { filePath ->
-                                val newRecording = AudioRecording(
-                                    name = "Audio ${audioRecordings.size + 1}",
-                                    filePath = filePath
-                                )
-                                audioRecordings = audioRecordings + newRecording
+                                val updatedAudioUris = uiState.audioUris + filePath
+                                viewModel.updateUiState(uiState.copy(audioUris = updatedAudioUris))
                             }
-                            // Resetear el tiempo al detener
                             recordingTimeSeconds = 0
                         } else {
-                            // Lógica para solicitar permiso e iniciar
-                            recordingTimeSeconds = 0 // Asegurar que el tiempo esté en 0 antes de iniciar
+                            recordingTimeSeconds = 0
                             permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
                         }
                     },
@@ -152,17 +171,14 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
                     )
                 ) {
                     if (isRecording) {
-                        // Muestra el tiempo transcurrido en MM:SS
                         Text(
                             text = recordingTimeSeconds.toMMSS(),
-                            // CORRECCIÓN: Usar un estilo pequeño para que quepa en el botón (Propuesta 1)
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontSize = 14.sp
                             ),
                             color = MaterialTheme.colorScheme.onError
                         )
                     } else {
-                        // Muestra el icono de Play/Grabar
                         Icon(
                             imageVector = Icons.Filled.PlayArrow,
                             contentDescription = "Grabar audio"
@@ -170,7 +186,16 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
                     }
                 }
 
-                Button(onClick = onBack) {
+                Button(onClick = {
+                    if (uiState.title.isBlank() || uiState.date == 0L) {
+                        Toast.makeText(context, "El título y la fecha son obligatorios.", Toast.LENGTH_LONG).show()
+                    } else {
+                        coroutineScope.launch {
+                            viewModel.saveReminder()
+                            onBack()
+                        }
+                    }
+                }) {
                     Text("Guardar")
                 }
             }
@@ -184,16 +209,16 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
                 .padding(16.dp)
         ) {
             OutlinedTextField(
-                value = title,
-                onValueChange = { title = it },
+                value = uiState.title,
+                onValueChange = { viewModel.updateUiState(uiState.copy(title = it)) },
                 label = { Text("Título") },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(modifier = Modifier.height(16.dp))
 
             OutlinedTextField(
-                value = details,
-                onValueChange = { details = it },
+                value = uiState.description,
+                onValueChange = { viewModel.updateUiState(uiState.copy(description = it)) },
                 label = { Text("Detalles") },
                 modifier = Modifier
                     .fillMaxWidth()
@@ -201,9 +226,9 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Selector de fecha
+            val showDatePicker = remember { mutableStateOf(false) }
             Button(onClick = { showDatePicker.value = true }) {
-                Text(text = selectedDate.value?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(it)) } ?: "Seleccionar fecha")
+                Text(text = if (uiState.date != 0L) SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(uiState.date)) else "Seleccionar fecha")
             }
 
             if (showDatePicker.value) {
@@ -212,7 +237,9 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
                     onDismissRequest = { showDatePicker.value = false },
                     confirmButton = {
                         TextButton(onClick = {
-                            selectedDate.value = datePickerState.selectedDateMillis
+                            datePickerState.selectedDateMillis?.let {
+                                viewModel.updateUiState(uiState.copy(date = it))
+                            }
                             showDatePicker.value = false
                         }) {
                             Text("Aceptar")
@@ -234,7 +261,7 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
                     .padding(vertical = 16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Checkbox(checked = isNotifying, onCheckedChange = { isNotifying = it })
+                Checkbox(checked = uiState.notify, onCheckedChange = { viewModel.updateUiState(uiState.copy(notify = it)) })
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Notificarme")
             }
@@ -245,11 +272,11 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
             Spacer(modifier = Modifier.height(8.dp))
 
             Column {
-                audioRecordings.forEach { recording ->
+                uiState.audioUris.forEach { audioUri ->
                     AudioPlayer(
-                        audioRecording = recording,
-                        onPlayClick = { audioRecorderHelper.playAudio(recording.filePath) },
-                        onDeleteClick = { recordingToDelete = recording }
+                        audioPath = audioUri,
+                        onPlayClick = { audioRecorderHelper.playAudio(audioUri) },
+                        onDeleteClick = { recordingToDelete = audioUri }
                     )
                 }
             }
@@ -265,7 +292,7 @@ fun ReminderDetailScreen(onBack: () -> Unit) {
 
 @Composable
 fun AudioPlayer(
-    audioRecording: AudioRecording,
+    audioPath: String,
     onPlayClick: () -> Unit,
     onDeleteClick: () -> Unit
 ) {
@@ -285,7 +312,7 @@ fun AudioPlayer(
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(
-                text = audioRecording.name,
+                text = audioPath.substringAfterLast("/"),
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge
             )

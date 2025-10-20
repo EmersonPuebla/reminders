@@ -12,17 +12,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.reminders.data.Reminder
+import com.example.reminders.ui.AppViewModelProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReminderListScreen(onAddReminder: () -> Unit, onItemClick: (String) -> Unit, onSettingsClick: () -> Unit) {
-    val sampleReminders = listOf(
-        "Lista de la fokin compra",
-        "Cosa x hacer ptm",
-        "Recordatorio de la UI"
-    )
+fun ReminderListScreen(
+    onAddReminder: () -> Unit, 
+    onItemClick: (Int) -> Unit, 
+    onSettingsClick: () -> Unit,
+    viewModel: ReminderListViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val reminderListUiState by viewModel.reminderListUiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
-    val filteredReminders = sampleReminders.filter { it.contains(searchQuery, ignoreCase = true) }
+    val filteredReminders = reminderListUiState.itemList.filter { it.title.contains(searchQuery, ignoreCase = true) }
 
     Scaffold(
         topBar = {
@@ -60,8 +64,8 @@ fun ReminderListScreen(onAddReminder: () -> Unit, onItemClick: (String) -> Unit,
                 }
             } else {
                 LazyColumn {
-                    items(filteredReminders) { title ->
-                        ReminderListItem(title = title, onClick = { onItemClick(title) })
+                    items(filteredReminders) { reminder ->
+                        ReminderListItem(reminder = reminder, onClick = { onItemClick(reminder.id) })
                     }
                 }
             }
@@ -70,7 +74,7 @@ fun ReminderListScreen(onAddReminder: () -> Unit, onItemClick: (String) -> Unit,
 }
 
 @Composable
-fun ReminderListItem(title: String, onClick: () -> Unit) {
+fun ReminderListItem(reminder: Reminder, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -80,7 +84,7 @@ fun ReminderListItem(title: String, onClick: () -> Unit) {
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
+            Text(text = reminder.title, style = MaterialTheme.typography.titleMedium)
         }
     }
 }
