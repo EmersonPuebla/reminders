@@ -1,7 +1,9 @@
 package com.example.reminders.ui.screens
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -91,7 +93,7 @@ fun ViewReminderScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { onEditClick(reminder.id) }) { 
+                        IconButton(onClick = { onEditClick(reminder.id) }) {
                             Icon(Icons.Filled.Edit, contentDescription = "Editar")
                         }
                         IconButton(onClick = { showDeleteConfirmation = true }) {
@@ -171,15 +173,22 @@ fun ViewReminderScreen(
                     Text("Archivos adjuntos", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     Column {
-                        reminder.attachments.forEach { (uri, name) ->
+                        reminder.attachments.forEach { (path, name) ->
                             AttachmentItem(
                                 attachmentName = name,
                                 onViewClick = {
+                                    val file = File(path)
+                                    val authority = "${context.packageName}.fileprovider"
+                                    val uri = FileProvider.getUriForFile(context, authority, file)
                                     val intent = Intent(Intent.ACTION_VIEW).apply {
-                                        data = Uri.parse(uri)
-                                        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                        setDataAndType(uri, context.contentResolver.getType(uri))
+                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                     }
-                                    context.startActivity(intent)
+                                    try {
+                                        context.startActivity(intent)
+                                    } catch (e: Exception) {
+                                        Toast.makeText(context, "No se encontró una aplicación para abrir este archivo.", Toast.LENGTH_SHORT).show()
+                                    }
                                 }
                             )
                         }
