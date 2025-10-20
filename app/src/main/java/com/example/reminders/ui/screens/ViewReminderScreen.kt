@@ -1,19 +1,20 @@
 package com.example.reminders.ui.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.reminders.ui.AppViewModelProvider
+import com.example.reminders.utils.AudioRecorderHelper
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
@@ -23,11 +24,20 @@ import java.util.*
 @Composable
 fun ViewReminderScreen(
     onBack: () -> Unit,
-    onEditClick: (Int) -> Unit, // Add this callback
+    onEditClick: (Int) -> Unit,
     viewModel: ViewReminderViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+    val audioRecorderHelper = remember { AudioRecorderHelper(context) }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            audioRecorderHelper.stopPlaying()
+        }
+    }
 
     val currentOnBack by rememberUpdatedState(onBack)
     LaunchedEffect(viewModel) {
@@ -77,7 +87,7 @@ fun ViewReminderScreen(
                         }
                     },
                     actions = {
-                        IconButton(onClick = { onEditClick(reminder.id) }) { // Call the callback
+                        IconButton(onClick = { onEditClick(reminder.id) }) { 
                             Icon(Icons.Filled.Edit, contentDescription = "Editar")
                         }
                         IconButton(onClick = { showDeleteConfirmation = true }) {
@@ -85,13 +95,26 @@ fun ViewReminderScreen(
                         }
                     }
                 )
+            },
+            bottomBar = { // Add a bottomBar for the button
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+                        Text("Volver")
+                    }
+                }
             }
         ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding)
-                    .padding(16.dp)
+                    .padding(padding) // Apply padding from Scaffold
+                    .verticalScroll(rememberScrollState()) // Make the content scrollable
+                    .padding(16.dp) // Add padding for the content itself
             ) {
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -124,11 +147,47 @@ fun ViewReminderScreen(
                         }
                     }
                 }
-                Spacer(modifier = Modifier.weight(1f))
-                Button(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                    Text("Volver")
+
+                if (reminder.audioUris.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Grabaciones de audio", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Column {
+                        reminder.audioUris.forEach { audioUri ->
+                            AudioPlayerItem(
+                                audioPath = audioUri,
+                                onPlayClick = { audioRecorderHelper.playAudio(audioUri) }
+                            )
+                        }
+                    }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun AudioPlayerItem(audioPath: String, onPlayClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onPlayClick) {
+                Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir audio")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = audioPath.substringAfterLast("/"),
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
     }
 }
