@@ -13,11 +13,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.reminders.ui.AppViewModelProvider
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(onBack: () -> Unit, onThemeChange: (Theme) -> Unit) {
-    var selectedTheme by remember { mutableStateOf(Theme.SYSTEM) }
+fun SettingsScreen(
+    onBack: () -> Unit,
+    viewModel: SettingsViewModel = viewModel(factory = AppViewModelProvider.Factory)
+) {
+    val selectedTheme by viewModel.theme.collectAsState()
 
     Scaffold(
         topBar = {
@@ -45,8 +50,7 @@ fun SettingsScreen(onBack: () -> Unit, onThemeChange: (Theme) -> Unit) {
                     RadioButton(
                         selected = selectedTheme == theme,
                         onClick = { 
-                            selectedTheme = theme
-                            onThemeChange(theme)
+                            viewModel.updateTheme(theme)
                         }
                     )
                     Spacer(modifier = Modifier.width(8.dp))

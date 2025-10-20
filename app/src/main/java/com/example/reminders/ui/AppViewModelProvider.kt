@@ -8,6 +8,7 @@ import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.reminders.RemindersApplication
 import com.example.reminders.ui.screens.ReminderDetailViewModel
 import com.example.reminders.ui.screens.ReminderListViewModel
+import com.example.reminders.ui.screens.SettingsViewModel
 import com.example.reminders.ui.screens.ViewReminderViewModel
 
 object AppViewModelProvider {
@@ -27,6 +28,11 @@ object AppViewModelProvider {
             ViewReminderViewModel(
                 this.createSavedStateHandle(),
                 remindersApplication().container.remindersRepository
+            )
+        }
+        initializer {
+            SettingsViewModel(
+                remindersApplication().container.userPreferencesRepository
             )
         }
     }
