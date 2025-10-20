@@ -54,7 +54,8 @@ data class ReminderUiState(
     val description: String = "",
     val date: Long = 0L,
     val notify: Boolean = false,
-    val audioRecordings: Map<String, String> = emptyMap()
+    val audioRecordings: Map<String, String> = emptyMap(),
+    val attachments: Map<String, String> = emptyMap()
 )
 
 fun ReminderUiState.toReminder(): Reminder = Reminder(
@@ -63,7 +64,8 @@ fun ReminderUiState.toReminder(): Reminder = Reminder(
     description = description,
     date = date,
     notify = notify,
-    audioRecordings = audioRecordings
+    audioRecordings = audioRecordings,
+    attachments = attachments
 )
 
 fun Reminder.toReminderUiState(): ReminderUiState = ReminderUiState(
@@ -72,5 +74,6 @@ fun Reminder.toReminderUiState(): ReminderUiState = ReminderUiState(
     description = description,
     date = date,
     notify = notify,
-    audioRecordings = audioRecordings
+    audioRecordings = audioRecordings,
+    attachments = attachments
 )

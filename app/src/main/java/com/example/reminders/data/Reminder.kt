@@ -10,5 +10,6 @@ data class Reminder(
     val description: String,
     val date: Long,
     val notify: Boolean,
-    val audioRecordings: Map<String, String> = emptyMap()
+    val audioRecordings: Map<String, String> = emptyMap(),
+    val attachments: Map<String, String> = emptyMap()
 )

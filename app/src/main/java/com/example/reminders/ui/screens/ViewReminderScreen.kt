@@ -1,5 +1,7 @@
 package com.example.reminders.ui.screens
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -12,11 +14,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.reminders.ui.AppViewModelProvider
 import com.example.reminders.utils.AudioRecorderHelper
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -161,6 +165,26 @@ fun ViewReminderScreen(
                         }
                     }
                 }
+
+                if (reminder.attachments.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text("Archivos adjuntos", style = MaterialTheme.typography.titleMedium)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Column {
+                        reminder.attachments.forEach { (uri, name) ->
+                            AttachmentItem(
+                                attachmentName = name,
+                                onViewClick = {
+                                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                                        data = Uri.parse(uri)
+                                        flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
+                                    }
+                                    context.startActivity(intent)
+                                }
+                            )
+                        }
+                    }
+                }
             }
         }
     }
@@ -185,6 +209,32 @@ private fun AudioPlayerItem(audioName: String, onPlayClick: () -> Unit) {
             Spacer(modifier = Modifier.width(16.dp))
             Text(
                 text = audioName,
+                modifier = Modifier.weight(1f),
+                style = MaterialTheme.typography.bodyLarge
+            )
+        }
+    }
+}
+
+@Composable
+private fun AttachmentItem(attachmentName: String, onViewClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onViewClick) {
+                Icon(Icons.Filled.Visibility, contentDescription = "Ver archivo")
+            }
+            Spacer(modifier = Modifier.width(16.dp))
+            Text(
+                text = attachmentName,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge
             )
