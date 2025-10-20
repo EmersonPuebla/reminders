@@ -148,15 +148,15 @@ fun ViewReminderScreen(
                     }
                 }
 
-                if (reminder.audioUris.isNotEmpty()) {
+                if (reminder.audioRecordings.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(16.dp))
                     Text("Grabaciones de audio", style = MaterialTheme.typography.titleMedium)
                     Spacer(modifier = Modifier.height(8.dp))
                     Column {
-                        reminder.audioUris.forEach { audioUri ->
+                        reminder.audioRecordings.forEach { (path, name) ->
                             AudioPlayerItem(
-                                audioPath = audioUri,
-                                onPlayClick = { audioRecorderHelper.playAudio(audioUri) }
+                                audioName = name,
+                                onPlayClick = { audioRecorderHelper.playAudio(path) }
                             )
                         }
                     }
@@ -167,7 +167,7 @@ fun ViewReminderScreen(
 }
 
 @Composable
-private fun AudioPlayerItem(audioPath: String, onPlayClick: () -> Unit) {
+private fun AudioPlayerItem(audioName: String, onPlayClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -184,7 +184,7 @@ private fun AudioPlayerItem(audioPath: String, onPlayClick: () -> Unit) {
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(
-                text = audioPath.substringAfterLast("/"),
+                text = audioName,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge
             )

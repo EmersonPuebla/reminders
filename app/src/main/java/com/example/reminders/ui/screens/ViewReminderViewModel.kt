@@ -26,7 +26,7 @@ class ViewReminderViewModel(savedStateHandle: SavedStateHandle, private val remi
                         description = reminder.description,
                         date = reminder.date,
                         notify = reminder.notify,
-                        audioUris = reminder.audioUris
+                        audioRecordings = reminder.audioRecordings
                     )
                 }
             }.stateIn(

@@ -11,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,9 +29,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-// Data class to hold audio recording information
-data class AudioRecording(val name: String, val filePath: String)
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderDetailScreen(
@@ -42,12 +40,14 @@ fun ReminderDetailScreen(
     val context = LocalContext.current
     var isRecording by remember { mutableStateOf(false) }
     var recordingToDelete by remember { mutableStateOf<String?>(null) }
+    var recordingToRename by remember { mutableStateOf<Pair<String, String>?>(null) }
     var recordingTimeSeconds by remember { mutableStateOf(0) }
     var showExitConfirmationDialog by remember { mutableStateOf(false) }
+    var showNameAudioDialog by remember { mutableStateOf<String?>(null) }
 
     val audioRecorderHelper = remember { AudioRecorderHelper(context) }
 
-    val hasUnsavedChanges = uiState.title.isNotBlank() || uiState.description.isNotBlank() || uiState.date != 0L || uiState.audioUris.isNotEmpty()
+    val hasUnsavedChanges = uiState.title.isNotBlank() || uiState.description.isNotBlank() || uiState.date != 0L || uiState.audioRecordings.isNotEmpty()
 
     fun handleBackNavigation() {
         if (hasUnsavedChanges) {
@@ -119,8 +119,8 @@ fun ReminderDetailScreen(
                 TextButton(
                     onClick = {
                         recordingToDelete?.let { recording ->
-                            val updatedAudioUris = uiState.audioUris - recording
-                            viewModel.updateUiState(uiState.copy(audioUris = updatedAudioUris))
+                            val updatedAudioRecordings = uiState.audioRecordings - recording
+                            viewModel.updateUiState(uiState.copy(audioRecordings = updatedAudioRecordings))
                         }
                         recordingToDelete = null
                     }
@@ -131,6 +131,62 @@ fun ReminderDetailScreen(
             dismissButton = {
                 TextButton(onClick = { recordingToDelete = null }) {
                     Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showNameAudioDialog != null) {
+        var audioName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showNameAudioDialog = null },
+            title = { Text("Nombre del audio") },
+            text = {
+                OutlinedTextField(
+                    value = audioName,
+                    onValueChange = { audioName = it },
+                    label = { Text("Nombre") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showNameAudioDialog?.let {
+                            val updatedAudioRecordings = uiState.audioRecordings + (it to audioName)
+                            viewModel.updateUiState(uiState.copy(audioRecordings = updatedAudioRecordings))
+                        }
+                        showNameAudioDialog = null
+                    }
+                ) {
+                    Text("Guardar")
+                }
+            }
+        )
+    }
+
+    if (recordingToRename != null) {
+        var audioName by remember { mutableStateOf(recordingToRename!!.second) }
+        AlertDialog(
+            onDismissRequest = { recordingToRename = null },
+            title = { Text("Renombrar audio") },
+            text = {
+                OutlinedTextField(
+                    value = audioName,
+                    onValueChange = { audioName = it },
+                    label = { Text("Nombre") }
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        recordingToRename?.let {
+                            val updatedAudioRecordings = uiState.audioRecordings - it.first + (it.first to audioName)
+                            viewModel.updateUiState(uiState.copy(audioRecordings = updatedAudioRecordings))
+                        }
+                        recordingToRename = null
+                    }
+                ) {
+                    Text("Guardar")
                 }
             }
         )
@@ -155,8 +211,7 @@ fun ReminderDetailScreen(
                         if (isRecording) {
                             isRecording = false
                             audioRecorderHelper.stopRecording()?.let { filePath ->
-                                val updatedAudioUris = uiState.audioUris + filePath
-                                viewModel.updateUiState(uiState.copy(audioUris = updatedAudioUris))
+                                showNameAudioDialog = filePath
                             }
                             recordingTimeSeconds = 0
                         } else {
@@ -272,11 +327,12 @@ fun ReminderDetailScreen(
             Spacer(modifier = Modifier.height(8.dp))
 
             Column {
-                uiState.audioUris.forEach { audioUri ->
+                uiState.audioRecordings.forEach { (path, name) ->
                     AudioPlayer(
-                        audioPath = audioUri,
-                        onPlayClick = { audioRecorderHelper.playAudio(audioUri) },
-                        onDeleteClick = { recordingToDelete = audioUri }
+                        audioName = name,
+                        onPlayClick = { audioRecorderHelper.playAudio(path) },
+                        onDeleteClick = { recordingToDelete = path },
+                        onEditClick = { recordingToRename = path to name }
                     )
                 }
             }
@@ -292,9 +348,10 @@ fun ReminderDetailScreen(
 
 @Composable
 fun AudioPlayer(
-    audioPath: String,
+    audioName: String,
     onPlayClick: () -> Unit,
-    onDeleteClick: () -> Unit
+    onDeleteClick: () -> Unit,
+    onEditClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -312,10 +369,13 @@ fun AudioPlayer(
             }
             Spacer(modifier = Modifier.width(16.dp))
             Text(
-                text = audioPath.substringAfterLast("/"),
+                text = audioName,
                 modifier = Modifier.weight(1f),
                 style = MaterialTheme.typography.bodyLarge
             )
+            IconButton(onClick = onEditClick) {
+                Icon(Icons.Filled.Edit, contentDescription = "Renombrar audio")
+            }
             IconButton(onClick = onDeleteClick) {
                 Icon(Icons.Filled.Delete, contentDescription = "Eliminar audio")
             }
