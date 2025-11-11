@@ -49,7 +49,7 @@ fun SettingsScreen(
                 ) {
                     RadioButton(
                         selected = selectedTheme == theme,
-                        onClick = { 
+                        onClick = {
                             viewModel.updateTheme(theme)
                         }
                     )
@@ -57,6 +57,28 @@ fun SettingsScreen(
                     Text(theme.name)
                 }
             }
+
+            HorizontalDivider()
+
+            Text(text = "Servidor", style = MaterialTheme.typography.titleLarge)
+
+            Text("Dirección")
+            OutlinedTextField(
+                value = "",
+                onValueChange = { /* TODO */ },
+                placeholder = {
+                    Text("10.10.10.25")
+                }
+            )
+
+            Text("Puerto")
+            OutlinedTextField(
+                value = "",
+                onValueChange = { /* TODO */ },
+                placeholder = {
+                    Text("8040")
+                }
+            )
         }
     }
 }

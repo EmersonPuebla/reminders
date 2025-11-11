@@ -3,12 +3,17 @@ package com.example.reminders
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.compose.dialog
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.reminders.ui.AppViewModelProvider
@@ -48,7 +53,10 @@ fun RemindersApp() {
                 onSettingsClick = { navController.navigate("settings") }
             )
         }
-        composable("create_reminder") {
+        dialog(
+            "create_reminder",
+            dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
             ReminderDetailScreen(onBack = { navController.popBackStack() })
         }
         composable(
@@ -62,9 +70,10 @@ fun RemindersApp() {
                 }
             )
         }
-        composable(
+        dialog(
             route = "edit_reminder/{reminderId}",
-            arguments = listOf(navArgument("reminderId") { type = NavType.IntType })
+            arguments = listOf(navArgument("reminderId") { type = NavType.IntType }),
+            dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
             ReminderDetailScreen(onBack = { navController.popBackStack() })
         }

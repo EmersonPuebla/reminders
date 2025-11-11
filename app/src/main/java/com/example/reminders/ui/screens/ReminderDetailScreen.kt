@@ -21,7 +21,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.reminders.ui.AppViewModelProvider
 import com.example.reminders.utils.AudioRecorderHelper
@@ -48,7 +47,7 @@ fun ReminderDetailScreen(
     var recordingToRename by remember { mutableStateOf<Pair<String, String>?>(null) }
     var attachmentToDelete by remember { mutableStateOf<String?>(null) }
     var attachmentToRename by remember { mutableStateOf<Pair<String, String>?>(null) }
-    var recordingTimeSeconds by remember { mutableStateOf(0) }
+    var recordingTimeSeconds by remember { mutableIntStateOf(0) }
     var showExitConfirmationDialog by remember { mutableStateOf(false) }
     var showNameAudioDialog by remember { mutableStateOf<String?>(null) }
     var showNameAttachmentDialog by remember { mutableStateOf<Pair<Uri, String>?>(null) }
@@ -98,7 +97,7 @@ fun ReminderDetailScreen(
     fun Int.toMMSS(): String {
         val minutes = this / 60
         val seconds = this % 60
-        return String.format("%02d%02d", minutes, seconds)
+        return String.format(Locale.getDefault(), "%02d%02d", minutes, seconds)
     }
 
     @Composable
@@ -138,7 +137,20 @@ fun ReminderDetailScreen(
         topBar = {
             TopAppBar(
                 title = { Text(if (uiState.id != 0) "Editar Recordatorio" else "Crear Recordatorio") },
-                navigationIcon = { IconButton(onClick = ::handleBackNavigation) { Icon(Icons.Filled.ArrowBack, "Volver") } }
+                navigationIcon = { IconButton(onClick = ::handleBackNavigation) { Icon(Icons.Filled.Close, "Cerrar") } },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            coroutineScope.launch {
+                                viewModel.saveReminder()
+                                onBack()
+                            }
+                        },
+                        enabled = uiState.title.isNotBlank() && uiState.date != 0L
+                    ) {
+                        Text("Guardar")
+                    }
+                }
             )
         },
         bottomBar = {
@@ -176,19 +188,6 @@ fun ReminderDetailScreen(
                         } else {
                             Icon(Icons.Filled.PlayArrow, contentDescription = "Grabar audio")
                         }
-                    }
-
-                    Button(onClick = {
-                        if (uiState.title.isBlank() || uiState.date == 0L) {
-                            Toast.makeText(context, "El título y la fecha son obligatorios.", Toast.LENGTH_LONG).show()
-                        } else {
-                            coroutineScope.launch {
-                                viewModel.saveReminder()
-                                onBack()
-                            }
-                        }
-                    }) {
-                        Text("Guardar")
                     }
                 }
             }
@@ -242,9 +241,10 @@ fun ReminderDetailScreen(
                         setDataAndType(uri, context.contentResolver.getType(uri))
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
+
                     try {
                         context.startActivity(intent)
-                    } catch (e: Exception) {
+                    } catch (_: Exception) {
                         Toast.makeText(context, "No se encontró una aplicación para abrir este archivo.", Toast.LENGTH_SHORT).show()
                     }
                 }, onDeleteClick = { attachmentToDelete = path }, onEditClick = { attachmentToRename = path to name }) } }
@@ -354,7 +354,7 @@ private fun copyUriToInternalStorage(context: Context, uri: Uri, fileName: Strin
             }
         }
         file.absolutePath
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         Toast.makeText(context, "Error al guardar el archivo adjunto", Toast.LENGTH_SHORT).show()
         null
     }
