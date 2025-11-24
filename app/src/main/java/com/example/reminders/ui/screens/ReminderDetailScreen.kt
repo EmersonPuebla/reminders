@@ -221,18 +221,68 @@ fun ReminderDetailScreen(
             }
 
             if (uiState.notify) {
-                val showNotifyDatePicker = remember { mutableStateOf(false) }
-                Button(onClick = { showNotifyDatePicker.value = true }) {
+                var showNotifyDatePicker by remember { mutableStateOf(false) }
+                var showNotifyTimePicker by remember { mutableStateOf(false) }
+                var selectedDate by remember { mutableStateOf<Long?>(null) }
+
+                Button(onClick = { showNotifyDatePicker = true }) {
                     Text(text = if (uiState.notifyDate != 0L) SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(uiState.notifyDate)) else "Seleccionar fecha de notificación")
                 }
 
-                if (showNotifyDatePicker.value) {
-                    val datePickerState = rememberDatePickerState()
+                if (showNotifyDatePicker) {
+                    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = if (uiState.notifyDate != 0L) uiState.notifyDate else System.currentTimeMillis())
                     DatePickerDialog(
-                        onDismissRequest = { showNotifyDatePicker.value = false },
-                        confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { viewModel.updateUiState(uiState.copy(notifyDate = it)) }; showNotifyDatePicker.value = false }) { Text("Aceptar") } },
-                        dismissButton = { TextButton(onClick = { showNotifyDatePicker.value = false }) { Text("Cancelar") } }
+                        onDismissRequest = { showNotifyDatePicker = false },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                selectedDate = datePickerState.selectedDateMillis
+                                showNotifyDatePicker = false
+                                if (selectedDate != null) {
+                                    showNotifyTimePicker = true
+                                }
+                            }) { Text("Aceptar") }
+                        },
+                        dismissButton = { TextButton(onClick = { showNotifyDatePicker = false }) { Text("Cancelar") } }
                     ) { DatePicker(state = datePickerState) }
+                }
+
+                if (showNotifyTimePicker) {
+                    val calendar = Calendar.getInstance()
+                    if (uiState.notifyDate != 0L) {
+                        calendar.timeInMillis = uiState.notifyDate
+                    }
+                    val timePickerState = rememberTimePickerState(
+                        initialHour = calendar.get(Calendar.HOUR_OF_DAY),
+                        initialMinute = calendar.get(Calendar.MINUTE),
+                        is24Hour = true
+                    )
+                    AlertDialog(
+                        onDismissRequest = { showNotifyTimePicker = false },
+                        title = { Text("Seleccionar hora") },
+                        text = {
+                            Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                TimePicker(state = timePickerState)
+                            }
+                        },
+                        confirmButton = {
+                            TextButton(
+                                onClick = {
+                                    val newCal = Calendar.getInstance().apply {
+                                        timeInMillis = selectedDate!!
+                                        set(Calendar.HOUR_OF_DAY, timePickerState.hour)
+                                        set(Calendar.MINUTE, timePickerState.minute)
+                                        set(Calendar.SECOND, 0)
+                                        set(Calendar.MILLISECOND, 0)
+                                    }
+                                    viewModel.updateUiState(uiState.copy(notifyDate = newCal.timeInMillis))
+                                    showNotifyTimePicker = false
+                                }
+                            ) { Text("Aceptar") }
+                        },
+                        dismissButton = {
+                             TextButton(onClick = { showNotifyTimePicker = false }) { Text("Cancelar") }
+                        }
+                    )
                 }
             }
 

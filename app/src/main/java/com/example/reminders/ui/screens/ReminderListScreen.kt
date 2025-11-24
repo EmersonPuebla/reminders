@@ -18,6 +18,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.reminders.data.Reminder
 import com.example.reminders.ui.AppViewModelProvider
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -177,6 +180,11 @@ fun ReminderListItem(
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(text = reminder.title, style = MaterialTheme.typography.titleMedium)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(reminder.date)),
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
