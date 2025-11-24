@@ -4,8 +4,11 @@ import com.example.reminders.data.network.ApiService
 import com.example.reminders.data.network.AttachmentDto
 import com.example.reminders.data.network.ReminderDto
 import com.example.reminders.data.network.VoiceNoteDto
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 class CashedRemindersRepository(
     private val reminderDao: ReminderDao,
@@ -14,6 +17,9 @@ class CashedRemindersRepository(
 ) : RemindersRepository {
 
     private val converters = Converters()
+    
+    // Scope para operaciones de API que no deben ser canceladas por navegación
+    private val apiScope = CoroutineScope(Dispatchers.IO)
 
     override fun getAllReminders(): Flow<List<Reminder>> = reminderDao.getAllReminders()
 
@@ -21,58 +27,112 @@ class CashedRemindersRepository(
 
     override suspend fun insert(reminder: Reminder) {
         reminderDao.insert(reminder)
-        if (userPreferencesRepository.syncEnabled.first()) {
-            try {
-                apiService.createReminder(reminder.toDto())
-            } catch (e: Exception) {
-                e.printStackTrace()
+        val syncEnabled = userPreferencesRepository.syncEnabled.first()
+        android.util.Log.d("CashedRepository", "Insert - Sync habilitado: $syncEnabled")
+        if (syncEnabled) {
+            // Lanzar en scope que no será cancelado por navegación
+            apiScope.launch {
+                try {
+                    android.util.Log.d("CashedRepository", "Insertando recordatorio en API: ${reminder.title}")
+                    val result = apiService.createReminder(reminder.toDto())
+                    android.util.Log.d("CashedRepository", "Respuesta de API insert: success=${result.success}")
+                } catch (e: Exception) {
+                    android.util.Log.e("CashedRepository", "Error al insertar en API: ${e.message}", e)
+                    e.printStackTrace()
+                }
             }
+        } else {
+            android.util.Log.d("CashedRepository", "Sync deshabilitado - registro guardado solo localmente")
         }
     }
 
     override suspend fun update(reminder: Reminder) {
         reminderDao.update(reminder)
-        if (userPreferencesRepository.syncEnabled.first()) {
-            try {
-                apiService.updateReminder(reminder.id, reminder.toDto())
-            } catch (e: Exception) {
-                e.printStackTrace()
+        val syncEnabled = userPreferencesRepository.syncEnabled.first()
+        android.util.Log.d("CashedRepository", "Update - Sync habilitado: $syncEnabled")
+        if (syncEnabled) {
+            // Lanzar en scope que no será cancelado por navegación
+            apiScope.launch {
+                try {
+                    android.util.Log.d("CashedRepository", "Actualizando recordatorio en API: ${reminder.title}")
+                    val result = apiService.updateReminder(reminder.id, reminder.toDto())
+                    android.util.Log.d("CashedRepository", "Respuesta de API update: success=${result.success}")
+                } catch (e: Exception) {
+                    android.util.Log.e("CashedRepository", "Error al actualizar en API: ${e.message}", e)
+                    e.printStackTrace()
+                }
             }
+        } else {
+            android.util.Log.d("CashedRepository", "Sync deshabilitado - cambios guardados solo localmente")
         }
     }
 
     override suspend fun delete(reminder: Reminder) {
         reminderDao.delete(reminder)
-        if (userPreferencesRepository.syncEnabled.first()) {
-            try {
-                apiService.deleteReminder(reminder.id)
-            } catch (e: Exception) {
-                e.printStackTrace()
+        val syncEnabled = userPreferencesRepository.syncEnabled.first()
+        android.util.Log.d("CashedRepository", "Delete - Sync habilitado: $syncEnabled")
+        if (syncEnabled) {
+            // Lanzar en scope que no será cancelado por navegación
+            apiScope.launch {
+                try {
+                    android.util.Log.d("CashedRepository", "Eliminando recordatorio en API: ${reminder.title}")
+                    val result = apiService.deleteReminder(reminder.id)
+                    android.util.Log.d("CashedRepository", "Respuesta de API delete: success=${result.success}")
+                } catch (e: Exception) {
+                    android.util.Log.e("CashedRepository", "Error al eliminar en API: ${e.message}", e)
+                    e.printStackTrace()
+                }
             }
+        } else {
+            android.util.Log.d("CashedRepository", "Sync deshabilitado - eliminado solo localmente")
         }
     }
 
     override suspend fun deleteReminders(ids: List<Int>) {
         reminderDao.deleteReminders(ids)
-        if (userPreferencesRepository.syncEnabled.first()) {
-            try {
-                ids.forEach { apiService.deleteReminder(it) }
-            } catch (e: Exception) {
-                e.printStackTrace()
+        val syncEnabled = userPreferencesRepository.syncEnabled.first()
+        android.util.Log.d("CashedRepository", "DeleteReminders (lote) - Sync habilitado: $syncEnabled")
+        if (syncEnabled) {
+            // Lanzar en scope que no será cancelado por navegación
+            apiScope.launch {
+                try {
+                    android.util.Log.d("CashedRepository", "Eliminando ${ids.size} recordatorios en API")
+                    ids.forEach { id ->
+                        try {
+                            apiService.deleteReminder(id)
+                            android.util.Log.d("CashedRepository", "Recordatorio $id eliminado de API")
+                        } catch (e: Exception) {
+                            android.util.Log.e("CashedRepository", "Error al eliminar $id en API: ${e.message}")
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CashedRepository", "Error en deleteReminders: ${e.message}", e)
+                    e.printStackTrace()
+                }
             }
+        } else {
+            android.util.Log.d("CashedRepository", "Sync deshabilitado - eliminados solo localmente")
         }
     }
 
     override suspend fun syncReminders() {
-        if (!userPreferencesRepository.syncEnabled.first()) return
+        if (!userPreferencesRepository.syncEnabled.first()) {
+            android.util.Log.d("CashedRepository", "Sync deshabilitado")
+            return
+        }
         try {
+            android.util.Log.d("CashedRepository", "Iniciando sincronización de recordatorios")
             val response = apiService.getAllReminders()
             if (response.success) {
+                android.util.Log.d("CashedRepository", "Sincronización exitosa: ${response.data?.size} recordatorios")
                 response.data?.forEach { reminderDto ->
                     reminderDao.insert(reminderDto.toEntity())
                 }
+            } else {
+                android.util.Log.e("CashedRepository", "Error en sincronización: ${response.message}")
             }
         } catch (e: Exception) {
+            android.util.Log.e("CashedRepository", "Excepción en sync: ${e.message}", e)
             e.printStackTrace()
         }
     }

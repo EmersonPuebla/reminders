@@ -165,7 +165,8 @@ fun ViewReminderScreen(
                                 audioName = name,
                                 audioRecorderHelper = audioRecorderHelper,
                                 onDeleteClick = {},
-                                onEditClick = {}
+                                onEditClick = {},
+                                showButtons = false
                             )
                         }
                     }
@@ -194,7 +195,8 @@ fun ViewReminderScreen(
                                     }
                                 },
                                 onDeleteClick = {},
-                                onEditClick = {}
+                                onEditClick = {},
+                                showButtons = false
                             )
                         }
                     }

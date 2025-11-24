@@ -33,7 +33,8 @@ fun AudioPlayer(
     audioName: String,
     audioRecorderHelper: AudioRecorderHelper,
     onDeleteClick: () -> Unit,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    showButtons: Boolean = true
 ) {
     val isPlaying by audioRecorderHelper.isPlaying.collectAsState()
     val progress by audioRecorderHelper.progress.collectAsState()
@@ -59,8 +60,10 @@ fun AudioPlayer(
                 }
                 Spacer(modifier = Modifier.width(16.dp))
                 Text(text = audioName, modifier = Modifier.weight(1f), style = androidx.compose.material3.MaterialTheme.typography.bodyLarge)
-                IconButton(onClick = onEditClick) { Icon(Icons.Filled.Edit, "Renombrar audio") }
-                IconButton(onClick = onDeleteClick) { Icon(Icons.Filled.Delete, "Eliminar audio") }
+                if (showButtons) {
+                    IconButton(onClick = onEditClick) { Icon(Icons.Filled.Edit, "Renombrar audio") }
+                    IconButton(onClick = onDeleteClick) { Icon(Icons.Filled.Delete, "Eliminar audio") }
+                }
             }
             if (isCurrentAudio) {
                 Slider(
@@ -79,7 +82,8 @@ fun AttachmentItem(
     attachmentName: String,
     onViewClick: () -> Unit,
     onDeleteClick: () -> Unit,
-    onEditClick: () -> Unit
+    onEditClick: () -> Unit,
+    showButtons: Boolean = true
 ) {
     Card(
         modifier = Modifier
@@ -99,8 +103,10 @@ fun AttachmentItem(
                 modifier = Modifier.weight(1f),
                 style = androidx.compose.material3.MaterialTheme.typography.bodyLarge
             )
-            IconButton(onClick = onEditClick) { Icon(Icons.Filled.Edit, "Renombrar archivo") }
-            IconButton(onClick = onDeleteClick) { Icon(Icons.Filled.Delete, "Eliminar archivo") }
+            if (showButtons) {
+                IconButton(onClick = onEditClick) { Icon(Icons.Filled.Edit, "Renombrar archivo") }
+                IconButton(onClick = onDeleteClick) { Icon(Icons.Filled.Delete, "Eliminar archivo") }
+            }
         }
     }
 }

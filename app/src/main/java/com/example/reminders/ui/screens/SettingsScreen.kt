@@ -29,11 +29,13 @@ fun SettingsScreen(
     val selectedTheme by viewModel.theme.collectAsState()
     val serverAddress by viewModel.serverAddress.collectAsState()
     val serverPort by viewModel.serverPort.collectAsState()
+    val useHttps by viewModel.useHttps.collectAsState()
     val syncEnabled by viewModel.syncEnabled.collectAsState()
     val syncInterval by viewModel.syncInterval.collectAsState()
 
     var address by remember(serverAddress) { mutableStateOf(serverAddress) }
     var port by remember(serverPort) { mutableStateOf(serverPort) }
+    var isHttps by remember(useHttps) { mutableStateOf(useHttps) }
     var isSyncEnabled by remember(syncEnabled) { mutableStateOf(syncEnabled) }
     var interval by remember(syncInterval) { mutableStateOf(syncInterval.toString()) }
 
@@ -95,6 +97,32 @@ fun SettingsScreen(
                 modifier = Modifier.fillMaxWidth()
             )
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Usar HTTPS")
+                Spacer(modifier = Modifier.weight(1f))
+                Switch(
+                    checked = isHttps,
+                    onCheckedChange = { isHttps = it }
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Button(
+                onClick = {
+                    scope.launch {
+                        val success = viewModel.testConnection()
+                        val message = if (success) "Conexión exitosa" else "Error en la conexión"
+                        snackbarHostState.showSnackbar(message)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Probar conexión")
+            }
+
             HorizontalDivider()
 
             Text(text = "Sincronización", style = MaterialTheme.typography.titleLarge)
@@ -123,7 +151,7 @@ fun SettingsScreen(
 
             Button(
                 onClick = {
-                    viewModel.saveConnectionDetails(address, port)
+                    viewModel.saveConnectionDetails(address, port, isHttps)
                     viewModel.saveSyncSettings(isSyncEnabled, interval.toIntOrNull() ?: 15)
                     scope.launch {
                         snackbarHostState.showSnackbar("Ajustes guardados")

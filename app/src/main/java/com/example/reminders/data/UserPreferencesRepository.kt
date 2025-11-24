@@ -20,6 +20,7 @@ class UserPreferencesRepository(private val context: Context) {
         val THEME = stringPreferencesKey("theme")
         val SERVER_ADDRESS = stringPreferencesKey("server_address")
         val SERVER_PORT = stringPreferencesKey("server_port")
+        val USE_HTTPS = booleanPreferencesKey("use_https") // Nueva preferencia
         val SYNC_ENABLED = booleanPreferencesKey("sync_enabled")
         val SYNC_INTERVAL = intPreferencesKey("sync_interval")
     }
@@ -46,10 +47,16 @@ class UserPreferencesRepository(private val context: Context) {
             preferences[PreferencesKeys.SERVER_PORT] ?: ""
         }
 
-    suspend fun saveConnectionDetails(address: String, port: String) {
+    val useHttps: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.USE_HTTPS] ?: false
+        }
+
+    suspend fun saveConnectionDetails(address: String, port: String, useHttps: Boolean) {
         context.dataStore.edit {
             it[PreferencesKeys.SERVER_ADDRESS] = address
             it[PreferencesKeys.SERVER_PORT] = port
+            it[PreferencesKeys.USE_HTTPS] = useHttps
         }
     }
 

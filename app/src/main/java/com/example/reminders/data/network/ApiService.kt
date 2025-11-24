@@ -1,5 +1,6 @@
 package com.example.reminders.data.network
 
+import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -23,4 +24,7 @@ interface ApiService {
 
     @DELETE("api/v1/reminders/{id}")
     suspend fun deleteReminder(@Path("id") id: Int): ReminderApiResponse<Unit>
+
+    @GET("api/v1/reminders")
+    suspend fun testConnection(): Response<Unit> // Nuevo método
 }
