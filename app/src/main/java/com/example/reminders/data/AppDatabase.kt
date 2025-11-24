@@ -8,7 +8,7 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
-@Database(entities = [Reminder::class], version = 3, exportSchema = false)
+@Database(entities = [Reminder::class], version = 4, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
 
@@ -25,7 +25,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "reminder_database"
                 )
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3) // Add the new migration
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4) // Add the new migration
                 .build()
                 INSTANCE = instance
                 instance
@@ -40,6 +40,12 @@ abstract class AppDatabase : RoomDatabase() {
         private val MIGRATION_2_3 = object : Migration(2, 3) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 database.execSQL("ALTER TABLE reminders ADD COLUMN attachments TEXT NOT NULL DEFAULT '{}'")
+            }
+        }
+
+        private val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE reminders ADD COLUMN notifyDate INTEGER")
             }
         }
     }

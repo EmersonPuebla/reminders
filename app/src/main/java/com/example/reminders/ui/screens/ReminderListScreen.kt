@@ -19,8 +19,8 @@ import com.example.reminders.ui.AppViewModelProvider
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReminderListScreen(
-    onAddReminder: () -> Unit, 
-    onItemClick: (Int) -> Unit, 
+    onAddReminder: () -> Unit,
+    onItemClick: (Int) -> Unit,
     onSettingsClick: () -> Unit,
     viewModel: ReminderListViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
@@ -45,7 +45,10 @@ fun ReminderListScreen(
             }
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding)) {
+        Column(
+            modifier = Modifier
+                .padding(padding)
+        ) {
             OutlinedTextField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
@@ -63,7 +66,7 @@ fun ReminderListScreen(
                     Text(text = "No tienes reminders", style = MaterialTheme.typography.titleLarge)
                 }
             } else {
-                LazyColumn {
+                LazyColumn(modifier = Modifier.fillMaxSize()) {
                     items(filteredReminders) { reminder ->
                         ReminderListItem(reminder = reminder, onClick = { onItemClick(reminder.id) })
                     }

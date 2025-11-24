@@ -71,5 +71,11 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.1.1")
     implementation("androidx.compose.material:material-icons-extended")
 
+    // Retrofit
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+
+    // WorkManager
+    implementation(libs.androidx.work.runtime.ktx)
 
 }

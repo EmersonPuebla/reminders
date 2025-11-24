@@ -141,10 +141,8 @@ fun ReminderDetailScreen(
                 actions = {
                     TextButton(
                         onClick = {
-                            coroutineScope.launch {
-                                viewModel.saveReminder()
-                                onBack()
-                            }
+                            coroutineScope.launch { viewModel.saveReminder() }
+                            onBack()
                         },
                         enabled = uiState.title.isNotBlank() && uiState.date != 0L
                     ) {
@@ -217,10 +215,27 @@ fun ReminderDetailScreen(
             }
 
             Row(modifier = Modifier.fillMaxWidth().padding(vertical = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = uiState.notify, onCheckedChange = { viewModel.updateUiState(uiState.copy(notify = it)) })
-                Spacer(modifier = Modifier.width(8.dp))
                 Text("Notificarme")
+                Spacer(modifier = Modifier.width(8.dp))
+                Switch(checked = uiState.notify, onCheckedChange = { viewModel.updateUiState(uiState.copy(notify = it)) })
             }
+
+            if (uiState.notify) {
+                val showNotifyDatePicker = remember { mutableStateOf(false) }
+                Button(onClick = { showNotifyDatePicker.value = true }) {
+                    Text(text = if (uiState.notifyDate != 0L) SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date(uiState.notifyDate)) else "Seleccionar fecha de notificación")
+                }
+
+                if (showNotifyDatePicker.value) {
+                    val datePickerState = rememberDatePickerState()
+                    DatePickerDialog(
+                        onDismissRequest = { showNotifyDatePicker.value = false },
+                        confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { viewModel.updateUiState(uiState.copy(notifyDate = it)) }; showNotifyDatePicker.value = false }) { Text("Aceptar") } },
+                        dismissButton = { TextButton(onClick = { showNotifyDatePicker.value = false }) { Text("Cancelar") } }
+                    ) { DatePicker(state = datePickerState) }
+                }
+            }
+
 
             if (uiState.audioRecordings.isNotEmpty()) {
                 Spacer(modifier = Modifier.height(16.dp))
