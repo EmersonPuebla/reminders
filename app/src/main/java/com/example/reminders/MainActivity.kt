@@ -3,11 +3,14 @@ package com.example.reminders
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.*
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
@@ -34,17 +37,35 @@ class MainActivity : ComponentActivity() {
             }
 
             RemindersTheme(darkTheme = darkTheme) {
-                RemindersApp()
+                // A surface container using the 'background' color from the theme
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    RemindersApp()
+                }
             }
         }
     }
 }
 
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun RemindersApp() {
     val navController = rememberNavController()
+    val animationDuration = 300
+    val animationSpec = tween<Float>(animationDuration)
+
     NavHost(navController = navController, startDestination = "reminders") {
-        composable("reminders") {
+
+        composable(
+            "reminders",
+            exitTransition = {
+                scaleOut(animationSpec = tween(animationDuration), targetScale = 0.9f) +
+                    fadeOut(animationSpec = tween(animationDuration))
+            },
+            popEnterTransition = {
+                scaleIn(animationSpec = tween(animationDuration), initialScale = 0.9f) +
+                    fadeIn(animationSpec = tween(animationDuration))
+            }
+        ) {
             ReminderListScreen(
                 onAddReminder = { navController.navigate("create_reminder") },
                 onItemClick = { reminderId ->
@@ -61,8 +82,16 @@ fun RemindersApp() {
         }
         composable(
             route = "view_reminder/{reminderId}",
-            arguments = listOf(navArgument("reminderId") { type = NavType.IntType })
-        ) { 
+            arguments = listOf(navArgument("reminderId") { type = NavType.IntType }),
+            enterTransition = {
+                scaleIn(animationSpec = tween(animationDuration), initialScale = 0.9f) +
+                    fadeIn(animationSpec = tween(animationDuration))
+            },
+            popExitTransition = {
+                scaleOut(animationSpec = tween(animationDuration), targetScale = 0.9f) +
+                    fadeOut(animationSpec = tween(animationDuration))
+            }
+        ) {
             ViewReminderScreen(
                 onBack = { navController.popBackStack() },
                 onEditClick = { reminderId ->
@@ -77,7 +106,17 @@ fun RemindersApp() {
         ) {
             ReminderDetailScreen(onBack = { navController.popBackStack() })
         }
-        composable("settings") {
+        composable(
+            "settings",
+            enterTransition = {
+                scaleIn(animationSpec = tween(animationDuration), initialScale = 0.9f) +
+                    fadeIn(animationSpec = tween(animationDuration))
+            },
+            popExitTransition = {
+                scaleOut(animationSpec = tween(animationDuration), targetScale = 0.9f) +
+                    fadeOut(animationSpec = tween(animationDuration))
+            }
+        ) {
             SettingsScreen(
                 onBack = { navController.popBackStack() }
             )
