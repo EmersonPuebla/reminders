@@ -28,7 +28,8 @@ class AppDataContainer(private val context: Context) : AppContainer {
         CashedRemindersRepository(
             reminderDao = AppDatabase.getDatabase(context).reminderDao(),
             apiService = apiService,
-            userPreferencesRepository = userPreferencesRepository
+            userPreferencesRepository = userPreferencesRepository,
+            context = context
         )
     }
 }

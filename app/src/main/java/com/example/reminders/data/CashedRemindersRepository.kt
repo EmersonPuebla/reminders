@@ -1,5 +1,7 @@
 package com.example.reminders.data
 
+import android.content.Context
+import android.util.Base64
 import com.example.reminders.data.network.ApiService
 import com.example.reminders.data.network.AttachmentDto
 import com.example.reminders.data.network.ReminderDto
@@ -9,11 +11,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
 
 class CashedRemindersRepository(
     private val reminderDao: ReminderDao,
     private val apiService: ApiService,
-    private val userPreferencesRepository: UserPreferencesRepository
+    private val userPreferencesRepository: UserPreferencesRepository,
+    private val context: Context
 ) : RemindersRepository {
 
     private val converters = Converters()
@@ -255,12 +259,56 @@ class CashedRemindersRepository(
             notify = this.notify,
             notifyDate = converters.fromTimestamp(this.notifyDate),
             date = converters.fromTimestamp(this.date) ?: "",
-            voiceNotes = this.audioRecordings.map { VoiceNoteDto(name = it.key, data = it.value) },
-            attachments = this.attachments.map { AttachmentDto(name = it.key, data = it.value) }
+            voiceNotes = this.audioRecordings.map { (filePath, name) ->
+                // Convertir archivo de audio a base64
+                val base64Data = if (filePath.isNotEmpty()) {
+                    try {
+                        val file = File(filePath)
+                        if (file.exists()) {
+                            val fileBytes = file.readBytes()
+                            Base64.encodeToString(fileBytes, Base64.DEFAULT)
+                        } else {
+                            filePath // Si no existe el archivo, enviar la ruta como estaba
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("CashedRepository", "Error al codificar audio $name: ${e.message}")
+                        filePath
+                    }
+                } else {
+                    ""
+                }
+                VoiceNoteDto(name = name, data = base64Data)
+            },
+            attachments = this.attachments.map { (filePath, name) ->
+                // Convertir archivo adjunto a base64
+                val base64Data = if (filePath.isNotEmpty()) {
+                    try {
+                        val file = File(filePath)
+                        if (file.exists()) {
+                            val fileBytes = file.readBytes()
+                            Base64.encodeToString(fileBytes, Base64.DEFAULT)
+                        } else {
+                            filePath // Si no existe el archivo, enviar la ruta como estaba
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("CashedRepository", "Error al codificar archivo $name: ${e.message}")
+                        filePath
+                    }
+                } else {
+                    ""
+                }
+                AttachmentDto(name = name, data = base64Data)
+            }
         )
     }
 
     private fun ReminderDto.toEntity(): Reminder {
+        // Crear directorios si no existen
+        val audioDir = File(context.filesDir, "audio_recordings")
+        val attachmentsDir = File(context.filesDir, "attachments")
+        audioDir.mkdirs()
+        attachmentsDir.mkdirs()
+
         return Reminder(
             id = this.id,
             title = this.title,
@@ -268,8 +316,52 @@ class CashedRemindersRepository(
             date = converters.dateToTimestamp(this.date) ?: 0,
             notify = this.notify,
             notifyDate = converters.dateToTimestamp(this.notifyDate),
-            audioRecordings = (this.voiceNotes ?: emptyList()).associate { it.name to (it.data ?: "") },
-            attachments = (this.attachments ?: emptyList()).associate { it.name to (it.data ?: "") }
+            audioRecordings = (this.voiceNotes ?: emptyList()).associate { voiceNote ->
+                val data = voiceNote.data ?: ""
+                val filename = voiceNote.name
+                
+                // Detectar si es base64 (contiene caracteres de base64 o es muy largo)
+                val filePath = if (data.isNotEmpty() && (data.contains(Regex("[+/=]")) || data.length > 200)) {
+                    try {
+                        // Es base64, decodificar y guardar como archivo
+                        val decodedBytes = Base64.decode(data, Base64.DEFAULT)
+                        val file = File(audioDir, "${System.currentTimeMillis()}_$filename")
+                        file.writeBytes(decodedBytes)
+                        android.util.Log.d("CashedRepository", "Audio decodificado y guardado: ${file.absolutePath}")
+                        file.absolutePath
+                    } catch (e: Exception) {
+                        android.util.Log.e("CashedRepository", "Error al decodificar audio $filename: ${e.message}")
+                        data // Devolver como estaba si no se puede decodificar
+                    }
+                } else {
+                    data // Ya es una ruta de archivo
+                }
+                
+                filename to filePath
+            },
+            attachments = (this.attachments ?: emptyList()).associate { attachment ->
+                val data = attachment.data ?: ""
+                val filename = attachment.name
+                
+                // Detectar si es base64
+                val filePath = if (data.isNotEmpty() && (data.contains(Regex("[+/=]")) || data.length > 200)) {
+                    try {
+                        // Es base64, decodificar y guardar como archivo
+                        val decodedBytes = Base64.decode(data, Base64.DEFAULT)
+                        val file = File(attachmentsDir, "${System.currentTimeMillis()}_$filename")
+                        file.writeBytes(decodedBytes)
+                        android.util.Log.d("CashedRepository", "Archivo decodificado y guardado: ${file.absolutePath}")
+                        file.absolutePath
+                    } catch (e: Exception) {
+                        android.util.Log.e("CashedRepository", "Error al decodificar archivo $filename: ${e.message}")
+                        data // Devolver como estaba si no se puede decodificar
+                    }
+                } else {
+                    data // Ya es una ruta de archivo
+                }
+                
+                filename to filePath
+            }
         )
     }
 }
