@@ -241,7 +241,7 @@ fun ReminderDetailScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 Text("Grabaciones de audio", style = MaterialTheme.typography.titleMedium)
                 Spacer(modifier = Modifier.height(8.dp))
-                Column { uiState.audioRecordings.forEach { (path, name) -> AudioPlayer(audioName = name, onPlayClick = { audioRecorderHelper.playAudio(path) }, onDeleteClick = { recordingToDelete = path }, onEditClick = { recordingToRename = path to name }) } }
+                Column { uiState.audioRecordings.forEach { (path, name) -> AudioPlayer(audioPath = path, audioName = name, audioRecorderHelper = audioRecorderHelper, onDeleteClick = { recordingToDelete = path }, onEditClick = { recordingToRename = path to name }) } }
             }
 
             if (uiState.attachments.isNotEmpty()) {
@@ -280,12 +280,36 @@ fun HandleDialogs(
 
     if (showNameAudioDialog != null) {
         var audioName by remember { mutableStateOf("") }
-        AlertDialog(onDismissRequest = onDismissNameAudio, title = { Text("Nombre del audio") }, text = { OutlinedTextField(value = audioName, onValueChange = { audioName = it }, label = { Text("Nombre") }) }, confirmButton = { TextButton(onClick = { val updated = uiState.audioRecordings + (showNameAudioDialog to audioName); viewModel.updateUiState(uiState.copy(audioRecordings = updated)); onDismissNameAudio() }) { Text("Guardar") } })
+        AlertDialog(
+            onDismissRequest = onDismissNameAudio,
+            title = { Text("Nombre del audio") },
+            text = { OutlinedTextField(value = audioName, onValueChange = { audioName = it }, label = { Text("Nombre") }) },
+            confirmButton = { TextButton(onClick = {
+                val finalName = if (audioName.isBlank()) {
+                    val nextAudioNum = (uiState.audioRecordings.values
+                        .mapNotNull { it.removePrefix("audio ").trim().toIntOrNull() }
+                        .maxOrNull() ?: 0) + 1
+                    "audio $nextAudioNum"
+                } else audioName
+                val updated = uiState.audioRecordings + (showNameAudioDialog to finalName)
+                viewModel.updateUiState(uiState.copy(audioRecordings = updated))
+                onDismissNameAudio()
+            }) { Text("Guardar") } })
     }
 
     if (recordingToRename != null) {
         var audioName by remember { mutableStateOf(recordingToRename.second) }
-        AlertDialog(onDismissRequest = onDismissRecordingRename, title = { Text("Renombrar audio") }, text = { OutlinedTextField(value = audioName, onValueChange = { audioName = it }, label = { Text("Nombre") }) }, confirmButton = { TextButton(onClick = { val updated = uiState.audioRecordings - recordingToRename.first + (recordingToRename.first to audioName); viewModel.updateUiState(uiState.copy(audioRecordings = updated)); onDismissRecordingRename() }) { Text("Guardar") } })
+        AlertDialog(onDismissRequest = onDismissRecordingRename, title = { Text("Renombrar audio") }, text = { OutlinedTextField(value = audioName, onValueChange = { audioName = it }, label = { Text("Nombre") }) }, confirmButton = { TextButton(onClick = {
+            val finalName = if (audioName.isBlank()) {
+                val nextAudioNum = (uiState.audioRecordings.filterKeys { it != recordingToRename.first }.values
+                    .mapNotNull { it.removePrefix("audio ").trim().toIntOrNull() }
+                    .maxOrNull() ?: 0) + 1
+                "audio $nextAudioNum"
+            } else audioName
+            val updated = uiState.audioRecordings - recordingToRename.first + (recordingToRename.first to finalName)
+            viewModel.updateUiState(uiState.copy(audioRecordings = updated))
+            onDismissRecordingRename()
+        }) { Text("Guardar") } })
     }
 
     if (attachmentToDelete != null) {
@@ -296,9 +320,15 @@ fun HandleDialogs(
         var attachmentName by remember(showNameAttachmentDialog) { mutableStateOf(showNameAttachmentDialog.second) }
         AlertDialog(onDismissRequest = onDismissNameAttachment, title = { Text("Nombre del archivo") }, text = { OutlinedTextField(value = attachmentName, onValueChange = { attachmentName = it }, label = { Text("Nombre") }) }, confirmButton = { TextButton(onClick = {
             val (uri, _) = showNameAttachmentDialog
-            val newFilePath = copyUriToInternalStorage(context, uri, attachmentName)
+            val finalName = if (attachmentName.isBlank()) {
+                val nextAttachNum = (uiState.attachments.values
+                    .mapNotNull { it.removePrefix("adjunto ").trim().toIntOrNull() }
+                    .maxOrNull() ?: 0) + 1
+                "adjunto $nextAttachNum"
+            } else attachmentName
+            val newFilePath = copyUriToInternalStorage(context, uri, finalName)
             if (newFilePath != null) {
-                val updated = uiState.attachments + (newFilePath to attachmentName)
+                val updated = uiState.attachments + (newFilePath to finalName)
                 viewModel.updateUiState(uiState.copy(attachments = updated))
             }
             onDismissNameAttachment()
@@ -307,33 +337,17 @@ fun HandleDialogs(
 
     if (attachmentToRename != null) {
         var attachmentName by remember { mutableStateOf(attachmentToRename.second) }
-        AlertDialog(onDismissRequest = onDismissAttachmentRename, title = { Text("Renombrar archivo") }, text = { OutlinedTextField(value = attachmentName, onValueChange = { attachmentName = it }, label = { Text("Nombre") }) }, confirmButton = { TextButton(onClick = { val updated = uiState.attachments - attachmentToRename.first + (attachmentToRename.first to attachmentName); viewModel.updateUiState(uiState.copy(attachments = updated)); onDismissAttachmentRename() }) { Text("Guardar") } })
-    }
-}
-
-@Composable
-fun AudioPlayer(audioName: String, onPlayClick: () -> Unit, onDeleteClick: () -> Unit, onEditClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onPlayClick) { Icon(Icons.Filled.PlayArrow, "Reproducir audio") }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(text = audioName, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-            IconButton(onClick = onEditClick) { Icon(Icons.Filled.Edit, "Renombrar audio") }
-            IconButton(onClick = onDeleteClick) { Icon(Icons.Filled.Delete, "Eliminar audio") }
-        }
-    }
-}
-
-@Composable
-fun AttachmentItem(attachmentName: String, onViewClick: () -> Unit, onDeleteClick: () -> Unit, onEditClick: () -> Unit) {
-    Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp), shape = RoundedCornerShape(12.dp), elevation = CardDefaults.cardElevation(2.dp)) {
-        Row(modifier = Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onViewClick) { Icon(Icons.Filled.Visibility, "Ver archivo") }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(text = attachmentName, modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodyLarge)
-            IconButton(onClick = onEditClick) { Icon(Icons.Filled.Edit, "Renombrar archivo") }
-            IconButton(onClick = onDeleteClick) { Icon(Icons.Filled.Delete, "Eliminar archivo") }
-        }
+        AlertDialog(onDismissRequest = onDismissAttachmentRename, title = { Text("Renombrar archivo") }, text = { OutlinedTextField(value = attachmentName, onValueChange = { attachmentName = it }, label = { Text("Nombre") }) }, confirmButton = { TextButton(onClick = {
+            val finalName = if (attachmentName.isBlank()) {
+                val nextAttachNum = (uiState.attachments.filterKeys { it != attachmentToRename.first }.values
+                    .mapNotNull { it.removePrefix("adjunto ").trim().toIntOrNull() }
+                    .maxOrNull() ?: 0) + 1
+                "adjunto $nextAttachNum"
+            } else attachmentName
+            val updated = uiState.attachments - attachmentToRename.first + (attachmentToRename.first to finalName)
+            viewModel.updateUiState(uiState.copy(attachments = updated))
+            onDismissAttachmentRename()
+        }) { Text("Guardar") } })
     }
 }
 

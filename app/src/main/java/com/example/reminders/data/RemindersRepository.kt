@@ -8,6 +8,7 @@ interface RemindersRepository {
     suspend fun insert(reminder: Reminder)
     suspend fun update(reminder: Reminder)
     suspend fun delete(reminder: Reminder)
+    suspend fun deleteReminders(ids: List<Int>)
     suspend fun syncReminders()
 }
 
@@ -17,5 +18,6 @@ class OfflineRemindersRepository(private val reminderDao: ReminderDao) : Reminde
     override suspend fun insert(reminder: Reminder) = reminderDao.insert(reminder)
     override suspend fun update(reminder: Reminder) = reminderDao.update(reminder)
     override suspend fun delete(reminder: Reminder) = reminderDao.delete(reminder)
+    override suspend fun deleteReminders(ids: List<Int>) = reminderDao.deleteReminders(ids)
     override suspend fun syncReminders() { /* No-op for offline repository */ }
 }

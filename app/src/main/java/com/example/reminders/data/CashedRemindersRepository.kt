@@ -52,6 +52,17 @@ class CashedRemindersRepository(
         }
     }
 
+    override suspend fun deleteReminders(ids: List<Int>) {
+        reminderDao.deleteReminders(ids)
+        if (userPreferencesRepository.syncEnabled.first()) {
+            try {
+                ids.forEach { apiService.deleteReminder(it) }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        }
+    }
+
     override suspend fun syncReminders() {
         if (!userPreferencesRepository.syncEnabled.first()) return
         try {

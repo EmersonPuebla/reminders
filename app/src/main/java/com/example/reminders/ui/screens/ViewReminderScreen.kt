@@ -160,9 +160,12 @@ fun ViewReminderScreen(
                     Spacer(modifier = Modifier.height(8.dp))
                     Column {
                         reminder.audioRecordings.forEach { (path, name) ->
-                            AudioPlayerItem(
+                            AudioPlayer(
+                                audioPath = path,
                                 audioName = name,
-                                onPlayClick = { audioRecorderHelper.playAudio(path) }
+                                audioRecorderHelper = audioRecorderHelper,
+                                onDeleteClick = {},
+                                onEditClick = {}
                             )
                         }
                     }
@@ -186,67 +189,17 @@ fun ViewReminderScreen(
                                     }
                                     try {
                                         context.startActivity(intent)
-                                    } catch (e: Exception) {
+                                    } catch (e: ActivityNotFoundException) {
                                         Toast.makeText(context, "No se encontró una aplicación para abrir este archivo.", Toast.LENGTH_SHORT).show()
                                     }
-                                }
+                                },
+                                onDeleteClick = {},
+                                onEditClick = {}
                             )
                         }
                     }
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun AudioPlayerItem(audioName: String, onPlayClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onPlayClick) {
-                Icon(Icons.Filled.PlayArrow, contentDescription = "Reproducir audio")
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = audioName,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
-    }
-}
-
-@Composable
-private fun AttachmentItem(attachmentName: String, onViewClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onViewClick) {
-                Icon(Icons.Filled.Visibility, contentDescription = "Ver archivo")
-            }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = attachmentName,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge
-            )
         }
     }
 }

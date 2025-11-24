@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class ReminderListViewModel(private val remindersRepository: RemindersRepository) : ViewModel() {
 
@@ -18,6 +19,12 @@ class ReminderListViewModel(private val remindersRepository: RemindersRepository
                 started = SharingStarted.WhileSubscribed(TIMEOUT_MILLIS),
                 initialValue = ReminderListUiState()
             )
+
+    fun deleteReminders(ids: List<Int>) {
+        viewModelScope.launch {
+            remindersRepository.deleteReminders(ids)
+        }
+    }
 
     companion object {
         private const val TIMEOUT_MILLIS = 5_000L
