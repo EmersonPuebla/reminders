@@ -23,6 +23,7 @@ class UserPreferencesRepository(private val context: Context) {
         val USE_HTTPS = booleanPreferencesKey("use_https") // Nueva preferencia
         val SYNC_ENABLED = booleanPreferencesKey("sync_enabled")
         val SYNC_INTERVAL = intPreferencesKey("sync_interval")
+        val SHOW_SYNC_BUTTON = booleanPreferencesKey("show_sync_button")
     }
 
     val theme: Flow<Theme> = context.dataStore.data
@@ -74,6 +75,17 @@ class UserPreferencesRepository(private val context: Context) {
         context.dataStore.edit {
             it[PreferencesKeys.SYNC_ENABLED] = enabled
             it[PreferencesKeys.SYNC_INTERVAL] = interval
+        }
+    }
+
+    val showSyncButton: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.SHOW_SYNC_BUTTON] ?: false
+        }
+
+    suspend fun saveShowSyncButton(show: Boolean) {
+        context.dataStore.edit {
+            it[PreferencesKeys.SHOW_SYNC_BUTTON] = show
         }
     }
 }

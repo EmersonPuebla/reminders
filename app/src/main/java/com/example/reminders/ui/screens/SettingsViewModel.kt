@@ -56,6 +56,13 @@ class SettingsViewModel(
             initialValue = 15
         )
 
+    val showSyncButton: StateFlow<Boolean> = userPreferencesRepository.showSyncButton
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false
+        )
+
     fun updateTheme(theme: Theme) {
         viewModelScope.launch {
             userPreferencesRepository.saveTheme(theme)
@@ -71,6 +78,12 @@ class SettingsViewModel(
     fun saveSyncSettings(enabled: Boolean, interval: Int) {
         viewModelScope.launch {
             userPreferencesRepository.saveSyncSettings(enabled, interval)
+        }
+    }
+
+    fun saveShowSyncButton(show: Boolean) {
+        viewModelScope.launch {
+            userPreferencesRepository.saveShowSyncButton(show)
         }
     }
 

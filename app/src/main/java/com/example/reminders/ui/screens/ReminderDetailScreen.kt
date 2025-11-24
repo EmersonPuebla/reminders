@@ -206,10 +206,34 @@ fun ReminderDetailScreen(
             }
 
             if (showDatePicker.value) {
-                val datePickerState = rememberDatePickerState()
+                // Inicializar con la fecha actual en millisegundos, ajustada a las 00:00:00 de la zona horaria local
+                val calendar = Calendar.getInstance()
+                if (uiState.date != 0L) {
+                    calendar.timeInMillis = uiState.date
+                }
+                calendar.set(Calendar.HOUR_OF_DAY, 0)
+                calendar.set(Calendar.MINUTE, 0)
+                calendar.set(Calendar.SECOND, 0)
+                calendar.set(Calendar.MILLISECOND, 0)
+                
+                val datePickerState = rememberDatePickerState(initialSelectedDateMillis = calendar.timeInMillis)
                 DatePickerDialog(
                     onDismissRequest = { showDatePicker.value = false },
-                    confirmButton = { TextButton(onClick = { datePickerState.selectedDateMillis?.let { viewModel.updateUiState(uiState.copy(date = it)) }; showDatePicker.value = false }) { Text("Aceptar") } },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            datePickerState.selectedDateMillis?.let { selectedMillis ->
+                                // Ajustar la fecha seleccionada para que sea a las 00:00:00 en la zona horaria local
+                                val adjustedCal = Calendar.getInstance()
+                                adjustedCal.timeInMillis = selectedMillis
+                                adjustedCal.set(Calendar.HOUR_OF_DAY, 0)
+                                adjustedCal.set(Calendar.MINUTE, 0)
+                                adjustedCal.set(Calendar.SECOND, 0)
+                                adjustedCal.set(Calendar.MILLISECOND, 0)
+                                viewModel.updateUiState(uiState.copy(date = adjustedCal.timeInMillis))
+                            }
+                            showDatePicker.value = false
+                        }) { Text("Aceptar") }
+                    },
                     dismissButton = { TextButton(onClick = { showDatePicker.value = false }) { Text("Cancelar") } }
                 ) { DatePicker(state = datePickerState) }
             }
@@ -230,12 +254,31 @@ fun ReminderDetailScreen(
                 }
 
                 if (showNotifyDatePicker) {
-                    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = if (uiState.notifyDate != 0L) uiState.notifyDate else System.currentTimeMillis())
+                    // Inicializar con la fecha de notificación actual, ajustada a las 00:00:00
+                    val calendar = Calendar.getInstance()
+                    if (uiState.notifyDate != 0L) {
+                        calendar.timeInMillis = uiState.notifyDate
+                    }
+                    calendar.set(Calendar.HOUR_OF_DAY, 0)
+                    calendar.set(Calendar.MINUTE, 0)
+                    calendar.set(Calendar.SECOND, 0)
+                    calendar.set(Calendar.MILLISECOND, 0)
+                    
+                    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = calendar.timeInMillis)
                     DatePickerDialog(
                         onDismissRequest = { showNotifyDatePicker = false },
                         confirmButton = {
                             TextButton(onClick = {
-                                selectedDate = datePickerState.selectedDateMillis
+                                datePickerState.selectedDateMillis?.let { selectedMillis ->
+                                    // Ajustar la fecha seleccionada para que sea a las 00:00:00 en la zona horaria local
+                                    val adjustedCal = Calendar.getInstance()
+                                    adjustedCal.timeInMillis = selectedMillis
+                                    adjustedCal.set(Calendar.HOUR_OF_DAY, 0)
+                                    adjustedCal.set(Calendar.MINUTE, 0)
+                                    adjustedCal.set(Calendar.SECOND, 0)
+                                    adjustedCal.set(Calendar.MILLISECOND, 0)
+                                    selectedDate = adjustedCal.timeInMillis
+                                }
                                 showNotifyDatePicker = false
                                 if (selectedDate != null) {
                                     showNotifyTimePicker = true

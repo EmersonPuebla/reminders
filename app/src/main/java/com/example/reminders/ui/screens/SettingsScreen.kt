@@ -9,7 +9,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,12 +32,14 @@ fun SettingsScreen(
     val useHttps by viewModel.useHttps.collectAsState()
     val syncEnabled by viewModel.syncEnabled.collectAsState()
     val syncInterval by viewModel.syncInterval.collectAsState()
+    val showSyncButton by viewModel.showSyncButton.collectAsState()
 
     var address by remember(serverAddress) { mutableStateOf(serverAddress) }
     var port by remember(serverPort) { mutableStateOf(serverPort) }
     var isHttps by remember(useHttps) { mutableStateOf(useHttps) }
     var isSyncEnabled by remember(syncEnabled) { mutableStateOf(syncEnabled) }
     var interval by remember(syncInterval) { mutableStateOf(syncInterval.toString()) }
+    var isShowSyncButton by remember(showSyncButton) { mutableStateOf(showSyncButton) }
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -48,7 +50,7 @@ fun SettingsScreen(
                 title = { Text("Ajustes") },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.Filled.ArrowBack, contentDescription = "Volver")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
                     }
                 }
             )
@@ -147,12 +149,24 @@ fun SettingsScreen(
                 enabled = isSyncEnabled
             )
 
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("Mostrar botón de sincronización manual")
+                Spacer(modifier = Modifier.weight(1f))
+                Switch(
+                    checked = isShowSyncButton,
+                    onCheckedChange = { isShowSyncButton = it }
+                )
+            }
+
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = {
                     viewModel.saveConnectionDetails(address, port, isHttps)
                     viewModel.saveSyncSettings(isSyncEnabled, interval.toIntOrNull() ?: 15)
+                    viewModel.saveShowSyncButton(isShowSyncButton)
                     scope.launch {
                         snackbarHostState.showSnackbar("Ajustes guardados")
                     }

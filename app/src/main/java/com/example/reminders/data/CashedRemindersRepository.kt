@@ -137,6 +137,116 @@ class CashedRemindersRepository(
         }
     }
 
+    override suspend fun syncRemindersAndFetchMissing(): SyncResult {
+        if (!userPreferencesRepository.syncEnabled.first()) {
+            android.util.Log.d("CashedRepository", "Sync deshabilitado - syncRemindersAndFetchMissing abortado")
+            return SyncResult(false, "Sincronización deshabilitada")
+        }
+
+        return try {
+            android.util.Log.d("CashedRepository", "Iniciando sincronización (Cliente es la fuente de verdad)")
+            
+            // 1. Obtener recordatorios locales
+            val localReminders = reminderDao.getAllRemindersSync()
+            android.util.Log.d("CashedRepository", "Recordatorios locales: ${localReminders.size}")
+            
+            // 2. Obtener recordatorios de la API
+            val apiResponse = apiService.getAllReminders()
+            if (!apiResponse.success || apiResponse.data == null) {
+                return SyncResult(
+                    success = false,
+                    message = "Error al obtener recordatorios de la API: ${apiResponse.message}"
+                )
+            }
+            
+            val remindersFromApi = apiResponse.data
+            android.util.Log.d("CashedRepository", "Recordatorios en API: ${remindersFromApi.size}")
+
+            var syncedCount = 0
+            var newRemindersCount = 0
+
+            // 3. Crear mapas para comparación rápida
+            val apiMap = remindersFromApi.associateBy { it.id }
+            val apiTitleMap = remindersFromApi.associateBy { it.title }
+
+            // 4. PASO 1: Enviar estado actual del cliente a la API
+            // El cliente siempre prevalece. Sincronizar todos los recordatorios locales a la API
+            for (localReminder in localReminders) {
+                try {
+                    if (apiMap.containsKey(localReminder.id)) {
+                        // Ya existe en API - actualizar para que coincida exactamente con local
+                        val result = apiService.updateReminder(localReminder.id, localReminder.toDto())
+                        if (result.success) {
+                            android.util.Log.d("CashedRepository", "Recordatorio sincronizado (update): ${localReminder.title}")
+                            syncedCount++
+                        }
+                    } else {
+                        // No existe en API - crear
+                        val result = apiService.createReminder(localReminder.toDto())
+                        if (result.success) {
+                            android.util.Log.d("CashedRepository", "Recordatorio sincronizado (create): ${localReminder.title}")
+                            syncedCount++
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("CashedRepository", "Error al sincronizar ${localReminder.title}: ${e.message}")
+                }
+            }
+
+            // 5. PASO 2: Eliminar de API los registros que ya no existen localmente
+            val localTitles = localReminders.map { it.title }.toSet()
+            for (apiReminder in remindersFromApi) {
+                if (!localTitles.contains(apiReminder.title)) {
+                    try {
+                        val result = apiService.deleteReminder(apiReminder.id)
+                        if (result.success) {
+                            android.util.Log.d("CashedRepository", "Recordatorio eliminado de API (no existe en local): ${apiReminder.title}")
+                        }
+                    } catch (e: Exception) {
+                        android.util.Log.e("CashedRepository", "Error al eliminar ${apiReminder.title} de API: ${e.message}")
+                    }
+                }
+            }
+
+            // 6. PASO 3: Obtener recordatorios faltantes de la API (que existan en API pero no en local)
+            // Esto solo ocurriría si se agregaron desde otra fuente
+            val finalApiResponse = apiService.getAllReminders()
+            val localIds = localReminders.map { it.id }.toSet()
+            
+            if (finalApiResponse.success && finalApiResponse.data != null) {
+                for (reminderDto in finalApiResponse.data) {
+                    // Si existe en API pero no en local, descargar
+                    if (!localIds.contains(reminderDto.id)) {
+                        try {
+                            reminderDao.insert(reminderDto.toEntity())
+                            newRemindersCount++
+                            android.util.Log.d("CashedRepository", "Nuevo recordatorio descargado desde API: ${reminderDto.title}")
+                        } catch (e: Exception) {
+                            android.util.Log.e("CashedRepository", "Error al descargar ${reminderDto.title}: ${e.message}")
+                        }
+                    }
+                }
+            }
+
+            android.util.Log.d(
+                "CashedRepository",
+                "Sincronización completada - Sincronizados: $syncedCount, Nuevos descargados: $newRemindersCount"
+            )
+
+            SyncResult(
+                success = true,
+                message = "Sincronización completada: $syncedCount sincronizados, $newRemindersCount nuevos descargados",
+                newRemindersCount = newRemindersCount,
+                updatedRemindersCount = syncedCount,
+                deletedRemindersCount = remindersFromApi.size - syncedCount
+            )
+        } catch (e: Exception) {
+            android.util.Log.e("CashedRepository", "Excepción en syncRemindersAndFetchMissing: ${e.message}", e)
+            e.printStackTrace()
+            SyncResult(false, "Error durante la sincronización: ${e.message}")
+        }
+    }
+
     private fun Reminder.toDto(): ReminderDto {
         return ReminderDto(
             id = this.id,
@@ -158,8 +268,8 @@ class CashedRemindersRepository(
             date = converters.dateToTimestamp(this.date) ?: 0,
             notify = this.notify,
             notifyDate = converters.dateToTimestamp(this.notifyDate),
-            audioRecordings = this.voiceNotes.associate { it.name to (it.data ?: "") },
-            attachments = this.attachments.associate { it.name to (it.data ?: "") }
+            audioRecordings = (this.voiceNotes ?: emptyList()).associate { it.name to (it.data ?: "") },
+            attachments = (this.attachments ?: emptyList()).associate { it.name to (it.data ?: "") }
         )
     }
 }

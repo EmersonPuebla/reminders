@@ -27,4 +27,7 @@ interface ReminderDao {
 
     @Query("SELECT * FROM reminders ORDER BY date DESC")
     fun getAllReminders(): Flow<List<Reminder>>
+
+    @Query("SELECT * FROM reminders ORDER BY date DESC")
+    suspend fun getAllRemindersSync(): List<Reminder>
 }

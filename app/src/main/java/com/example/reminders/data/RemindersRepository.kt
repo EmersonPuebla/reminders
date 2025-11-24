@@ -10,7 +10,19 @@ interface RemindersRepository {
     suspend fun delete(reminder: Reminder)
     suspend fun deleteReminders(ids: List<Int>)
     suspend fun syncReminders()
+    suspend fun syncRemindersAndFetchMissing(): SyncResult
 }
+
+/**
+ * Resultado de la sincronización con información sobre lo que se sincronizó.
+ */
+data class SyncResult(
+    val success: Boolean,
+    val message: String,
+    val newRemindersCount: Int = 0,
+    val updatedRemindersCount: Int = 0,
+    val deletedRemindersCount: Int = 0
+)
 
 class OfflineRemindersRepository(private val reminderDao: ReminderDao) : RemindersRepository {
     override fun getAllReminders(): Flow<List<Reminder>> = reminderDao.getAllReminders()
@@ -20,4 +32,7 @@ class OfflineRemindersRepository(private val reminderDao: ReminderDao) : Reminde
     override suspend fun delete(reminder: Reminder) = reminderDao.delete(reminder)
     override suspend fun deleteReminders(ids: List<Int>) = reminderDao.deleteReminders(ids)
     override suspend fun syncReminders() { /* No-op for offline repository */ }
+    override suspend fun syncRemindersAndFetchMissing(): SyncResult {
+        return SyncResult(false, "No hay conexión de API configurada")
+    }
 }

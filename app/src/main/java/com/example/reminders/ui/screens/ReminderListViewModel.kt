@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.reminders.data.Reminder
 import com.example.reminders.data.RemindersRepository
+import com.example.reminders.data.SyncResult
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -23,6 +25,13 @@ class ReminderListViewModel(private val remindersRepository: RemindersRepository
     fun deleteReminders(ids: List<Int>) {
         viewModelScope.launch {
             remindersRepository.deleteReminders(ids)
+        }
+    }
+
+    fun syncRemindersAndFetchMissingAsync(onResult: (SyncResult) -> Unit) {
+        viewModelScope.launch {
+            val result = remindersRepository.syncRemindersAndFetchMissing()
+            onResult(result)
         }
     }
 

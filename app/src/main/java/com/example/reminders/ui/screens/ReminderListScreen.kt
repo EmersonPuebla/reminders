@@ -6,18 +6,21 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.reminders.data.Reminder
 import com.example.reminders.ui.AppViewModelProvider
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -36,6 +39,21 @@ fun ReminderListScreen(
     var selectionMode by remember { mutableStateOf(false) }
     var selectedItems by remember { mutableStateOf(setOf<Int>()) }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
+    var isSyncing by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    var syncMessage by remember { mutableStateOf("") }
+    var showSnackbar by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showSnackbar) {
+        if (showSnackbar) {
+            snackbarHostState.showSnackbar(syncMessage)
+            showSnackbar = false
+        }
+    }
+
+    // Acceder a UserPreferencesRepository desde la aplicación
+    val userPreferencesRepository = (LocalContext.current.applicationContext as? com.example.reminders.RemindersApplication)?.container?.userPreferencesRepository
+    val showSyncButton by (userPreferencesRepository?.showSyncButton?.collectAsState(initial = false) ?: remember { mutableStateOf(false) })
 
     fun toggleSelection(reminderId: Int) {
         val newSelectedItems = selectedItems.toMutableSet()
@@ -83,7 +101,7 @@ fun ReminderListScreen(
                             selectionMode = false
                             selectedItems = emptySet()
                         }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Atrás")
+                            Icon(Icons.AutoMirrored.Default.ArrowBack, contentDescription = "Atrás")
                         }
                     }
                 )
@@ -108,20 +126,52 @@ fun ReminderListScreen(
                     Icon(Icons.Filled.Add, contentDescription = "Añadir Recordatorio")
                 }
             }
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .padding(padding)
         ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { searchQuery = it },
-                label = { Text("Buscar") },
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp)
-            )
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    label = { Text("Buscar") },
+                    modifier = Modifier.weight(1f)
+                )
+
+                if (showSyncButton) {
+                    IconButton(
+                        onClick = {
+                            isSyncing = true
+                            viewModel.syncRemindersAndFetchMissingAsync { result ->
+                                syncMessage = if (result.success) {
+                                    "Sincronizado: ${result.newRemindersCount} nuevos, ${result.updatedRemindersCount} actualizados"
+                                } else {
+                                    "Error: ${result.message}"
+                                }
+                                showSnackbar = true
+                                isSyncing = false
+                            }
+                        },
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                        enabled = !isSyncing
+                    ) {
+                        if (isSyncing) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        } else {
+                            Icon(Icons.Filled.Sync, contentDescription = "Sincronizar")
+                        }
+                    }
+                }
+            }
 
             if (filteredReminders.isEmpty()) {
                 Box(
