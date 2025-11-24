@@ -169,45 +169,46 @@ class CashedRemindersRepository(
             var syncedCount = 0
             var newRemindersCount = 0
 
-            // 3. Crear mapas para comparación rápida
-            val apiMap = remindersFromApi.associateBy { it.id }
-            val apiTitleMap = remindersFromApi.associateBy { it.title }
+            // 3. Crear mapas para comparación por ID (clave única confiable)
+            val apiMapById = remindersFromApi.associateBy { it.id }
+            val localMapById = localReminders.associateBy { it.id }
 
             // 4. PASO 1: Enviar estado actual del cliente a la API
             // El cliente siempre prevalece. Sincronizar todos los recordatorios locales a la API
             for (localReminder in localReminders) {
                 try {
-                    if (apiMap.containsKey(localReminder.id)) {
-                        // Ya existe en API - actualizar para que coincida exactamente con local
+                    if (apiMapById.containsKey(localReminder.id)) {
+                        // Ya existe en API con el mismo ID - actualizar para que coincida exactamente con local
                         val result = apiService.updateReminder(localReminder.id, localReminder.toDto())
                         if (result.success) {
-                            android.util.Log.d("CashedRepository", "Recordatorio sincronizado (update): ${localReminder.title}")
+                            android.util.Log.d("CashedRepository", "Recordatorio sincronizado (update): ID=${localReminder.id}, Título=${localReminder.title}")
                             syncedCount++
                         }
                     } else {
                         // No existe en API - crear
                         val result = apiService.createReminder(localReminder.toDto())
                         if (result.success) {
-                            android.util.Log.d("CashedRepository", "Recordatorio sincronizado (create): ${localReminder.title}")
+                            android.util.Log.d("CashedRepository", "Recordatorio sincronizado (create): ID=${localReminder.id}, Título=${localReminder.title}")
                             syncedCount++
                         }
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e("CashedRepository", "Error al sincronizar ${localReminder.title}: ${e.message}")
+                    android.util.Log.e("CashedRepository", "Error al sincronizar ID=${localReminder.id}: ${e.message}")
                 }
             }
 
             // 5. PASO 2: Eliminar de API los registros que ya no existen localmente
-            val localTitles = localReminders.map { it.title }.toSet()
+            // Usar ID como clave, no título, para saber qué fue eliminado
+            val localIds = localMapById.keys
             for (apiReminder in remindersFromApi) {
-                if (!localTitles.contains(apiReminder.title)) {
+                if (!localIds.contains(apiReminder.id)) {
                     try {
                         val result = apiService.deleteReminder(apiReminder.id)
                         if (result.success) {
-                            android.util.Log.d("CashedRepository", "Recordatorio eliminado de API (no existe en local): ${apiReminder.title}")
+                            android.util.Log.d("CashedRepository", "Recordatorio eliminado de API (no existe en local): ID=${apiReminder.id}, Título=${apiReminder.title}")
                         }
                     } catch (e: Exception) {
-                        android.util.Log.e("CashedRepository", "Error al eliminar ${apiReminder.title} de API: ${e.message}")
+                        android.util.Log.e("CashedRepository", "Error al eliminar ID=${apiReminder.id} de API: ${e.message}")
                     }
                 }
             }
@@ -215,7 +216,6 @@ class CashedRemindersRepository(
             // 6. PASO 3: Obtener recordatorios faltantes de la API (que existan en API pero no en local)
             // Esto solo ocurriría si se agregaron desde otra fuente
             val finalApiResponse = apiService.getAllReminders()
-            val localIds = localReminders.map { it.id }.toSet()
             
             if (finalApiResponse.success && finalApiResponse.data != null) {
                 for (reminderDto in finalApiResponse.data) {
@@ -224,9 +224,9 @@ class CashedRemindersRepository(
                         try {
                             reminderDao.insert(reminderDto.toEntity())
                             newRemindersCount++
-                            android.util.Log.d("CashedRepository", "Nuevo recordatorio descargado desde API: ${reminderDto.title}")
+                            android.util.Log.d("CashedRepository", "Nuevo recordatorio descargado desde API: ID=${reminderDto.id}, Título=${reminderDto.title}")
                         } catch (e: Exception) {
-                            android.util.Log.e("CashedRepository", "Error al descargar ${reminderDto.title}: ${e.message}")
+                            android.util.Log.e("CashedRepository", "Error al descargar ID=${reminderDto.id}: ${e.message}")
                         }
                     }
                 }
