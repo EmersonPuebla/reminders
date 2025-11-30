@@ -18,6 +18,7 @@ class AudioRecorderHelper(private val context: Context) {
     private var audioFilePath: String? = null
     private var currentlyPlayingPath: String? = null
     private var progressUpdateTimer: Timer? = null
+    var wasPlayingBeforeDrag = false
 
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying
@@ -30,6 +31,9 @@ class AudioRecorderHelper(private val context: Context) {
 
     private val _currentPlayingPath = MutableStateFlow<String?>(null)
     val currentPlayingPath: StateFlow<String?> = _currentPlayingPath
+
+    private val _playbackSpeed = MutableStateFlow(1.0f)
+    val playbackSpeed: StateFlow<Float> = _playbackSpeed
 
     fun startRecording() {
         val audioFile = File.createTempFile("audio", ".3gp", context.cacheDir)
@@ -69,7 +73,12 @@ class AudioRecorderHelper(private val context: Context) {
                 _isPlaying.value = false
                 stopProgressTimer()
             } else {
-                mediaPlayer?.start()
+                mediaPlayer?.let {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        it.playbackParams = it.playbackParams.setSpeed(playbackSpeed.value)
+                    }
+                    it.start()
+                }
                 _isPlaying.value = true
                 startProgressTimer()
             }
@@ -82,11 +91,14 @@ class AudioRecorderHelper(private val context: Context) {
                     setDataSource(filePath)
                     prepare()
                     _duration.value = duration
-                    start()
-                    _isPlaying.value = true
                     setOnCompletionListener {
                         stopPlaying()
                     }
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        playbackParams = playbackParams.setSpeed(playbackSpeed.value)
+                    }
+                    start()
+                    _isPlaying.value = true
                     startProgressTimer()
                 } catch (e: IOException) {
                     stopPlaying()
@@ -95,9 +107,29 @@ class AudioRecorderHelper(private val context: Context) {
         }
     }
 
-    fun seekTo(position: Int) {
+    fun pauseAudio() {
+        mediaPlayer?.pause()
+        _isPlaying.value = false
+        stopProgressTimer()
+    }
+
+    fun resumeAudio() {
+        mediaPlayer?.let {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                it.playbackParams = it.playbackParams.setSpeed(playbackSpeed.value)
+            }
+            it.start()
+        }
+        _isPlaying.value = true
+        startProgressTimer()
+    }
+
+    fun seekTo(position: Int, resume: Boolean) {
         mediaPlayer?.seekTo(position)
         _progress.value = position
+        if (resume) {
+            resumeAudio()
+        }
     }
 
     private fun startProgressTimer() {
@@ -118,6 +150,22 @@ class AudioRecorderHelper(private val context: Context) {
         progressUpdateTimer = null
     }
 
+    fun cyclePlaybackSpeed() {
+        val nextSpeed = when (playbackSpeed.value) {
+            1.0f -> 1.5f
+            1.5f -> 2.0f
+            else -> 1.0f
+        }
+        _playbackSpeed.value = nextSpeed
+        mediaPlayer?.let {
+            if (it.isPlaying) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    it.playbackParams = it.playbackParams.setSpeed(nextSpeed)
+                }
+            }
+        }
+    }
+
     fun stopPlaying() {
         stopProgressTimer()
         mediaPlayer?.release()
@@ -127,5 +175,6 @@ class AudioRecorderHelper(private val context: Context) {
         _progress.value = 0
         _duration.value = 0
         _currentPlayingPath.value = null
+        _playbackSpeed.value = 1.0f
     }
 }

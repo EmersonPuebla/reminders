@@ -12,5 +12,6 @@ data class Reminder(
     val notify: Boolean,
     val notifyDate: Long? = null,
     val audioRecordings: Map<String, String> = emptyMap(),
-    val attachments: Map<String, String> = emptyMap()
+    val attachments: Map<String, String> = emptyMap(),
+    val sortOrder: Int = 0, // NUEVO CAMPO PARA ORDENAR
 )

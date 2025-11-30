@@ -1,5 +1,7 @@
 package com.example.reminders.ui.screens
 
+import android.content.Context
+import android.net.Uri
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -11,8 +13,9 @@ import com.example.reminders.data.RemindersRepository
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.io.File
 
-class ReminderDetailViewModel(private val remindersRepository: RemindersRepository, private val savedStateHandle: SavedStateHandle) : ViewModel() {
+class ReminderDetailViewModel(private val remindersRepository: RemindersRepository, private val savedStateHandle: SavedStateHandle, private val context: Context) : ViewModel() {
 
     var reminderUiState by mutableStateOf(ReminderUiState())
         private set
@@ -45,6 +48,20 @@ class ReminderDetailViewModel(private val remindersRepository: RemindersReposito
 
     suspend fun saveReminder() {
         remindersRepository.insert(reminderUiState.toReminder())
+    }
+
+    fun copyFileToInternalStorage(uri: Uri, directory: String, fileName: String): String? {
+        return try {
+            val inputStream = context.contentResolver.openInputStream(uri)
+            val newFile = File(context.filesDir, "$directory/$fileName")
+            newFile.parentFile?.mkdirs()
+            val outputStream = newFile.outputStream()
+            inputStream?.copyTo(outputStream)
+            newFile.absolutePath
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
     }
 }
 

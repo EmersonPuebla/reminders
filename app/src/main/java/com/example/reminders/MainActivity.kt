@@ -3,9 +3,6 @@ package com.example.reminders
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.window.DialogProperties
@@ -46,10 +43,6 @@ fun RemindersApp() {
     NavHost(navController = navController, startDestination = "reminders") {
         composable("reminders") {
             ReminderListScreen(
-                onAddReminder = { navController.navigate("create_reminder") },
-                onItemClick = { reminderId ->
-                    navController.navigate("view_reminder/$reminderId")
-                },
                 onSettingsClick = { navController.navigate("settings") }
             )
         }
@@ -57,25 +50,14 @@ fun RemindersApp() {
             "create_reminder",
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
-            ReminderDetailScreen(onBack = { navController.popBackStack() })
-        }
-        composable(
-            route = "view_reminder/{reminderId}",
-            arguments = listOf(navArgument("reminderId") { type = NavType.IntType })
-        ) { 
-            ViewReminderScreen(
-                onBack = { navController.popBackStack() },
-                onEditClick = { reminderId ->
-                    navController.navigate("edit_reminder/$reminderId")
-                }
-            )
+            EditReminderView(onBack = { navController.popBackStack() })
         }
         dialog(
             route = "edit_reminder/{reminderId}",
             arguments = listOf(navArgument("reminderId") { type = NavType.IntType }),
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
-            ReminderDetailScreen(onBack = { navController.popBackStack() })
+            EditReminderView(onBack = { navController.popBackStack() })
         }
         composable("settings") {
             SettingsScreen(

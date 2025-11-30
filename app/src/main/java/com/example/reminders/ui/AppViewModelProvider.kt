@@ -21,7 +21,8 @@ object AppViewModelProvider {
         initializer {
             ReminderDetailViewModel(
                 remindersRepository = remindersApplication().container.remindersRepository,
-                savedStateHandle = this.createSavedStateHandle()
+                savedStateHandle = this.createSavedStateHandle(),
+                context = remindersApplication().applicationContext
             )
         }
         initializer {
