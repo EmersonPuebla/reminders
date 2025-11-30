@@ -1,6 +1,5 @@
 package com.example.reminders.ui.screens
 
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.graphics.BitmapFactory
 import android.widget.Toast
@@ -26,25 +25,24 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AttachFile
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.InsertDriveFile
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -59,15 +57,17 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import androidx.core.content.FileProvider
 import com.example.reminders.data.Reminder
+import com.example.reminders.ui.components.AttachmentDialogActions
+import com.example.reminders.ui.components.AttachmentPreviewDialog
+import com.example.reminders.ui.components.AudioPlayer
 import com.example.reminders.utils.AudioRecorderHelper
+import kotlinx.coroutines.launch
 import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -86,7 +86,7 @@ fun ReadReminderView(
     }
 
     val tabs = listOf("Detalles", "Adjuntos", "Audios")
-    val tabIcons = listOf(Icons.Filled.List, Icons.Filled.AttachFile, Icons.Filled.GraphicEq)
+    val tabIcons = listOf(Icons.AutoMirrored.Filled.List, Icons.Filled.AttachFile, Icons.Filled.GraphicEq)
     val pagerState = rememberPagerState { tabs.size }
     val coroutineScope = rememberCoroutineScope()
 
@@ -148,13 +148,18 @@ fun DetailsTab(reminder: Reminder) {
             )
         }
 
-        Divider()
+        HorizontalDivider()
 
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(Icons.Default.DateRange, contentDescription = "Fecha del recordatorio")
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Recordatorio para el ${SimpleDateFormat("EEEE, dd 'de' MMMM 'de' yyyy 'a las' HH:mm", Locale("es", "ES")).format(Date(reminder.date))}",
+                text = "Recordatorio para el ${
+                    SimpleDateFormat(
+                        "EEEE, dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
+                        Locale("es", "ES")
+                    ).format(Date(reminder.date))
+                }",
                 style = MaterialTheme.typography.bodyMedium
             )
         }
@@ -164,9 +169,16 @@ fun DetailsTab(reminder: Reminder) {
             Spacer(modifier = Modifier.width(8.dp))
             if (reminder.notify && reminder.notifyDate != 0L) {
                 Text(
-                    "Notificación activada para el ${SimpleDateFormat("EEEE, dd 'de' MMMM 'de' yyyy 'a las' HH:mm", Locale("es", "ES")).format(Date(
-                        reminder.notifyDate?: 0L
-                    ))}",
+                    "Notificación activada para el ${
+                        SimpleDateFormat(
+                            "EEEE, dd 'de' MMMM 'de' yyyy 'a las' HH:mm",
+                            Locale("es", "ES")
+                        ).format(
+                            Date(
+                                reminder.notifyDate ?: 0L
+                            )
+                        )
+                    }",
                     style = MaterialTheme.typography.bodyMedium
                 )
             } else {
@@ -182,30 +194,60 @@ fun AttachmentsTab(reminder: Reminder) {
     var selectedAttachment by remember { mutableStateOf<Pair<String, String>?>(null) }
 
     selectedAttachment?.let { (path, name) ->
-        AttachmentViewDialog(
+        AttachmentPreviewDialog(
             path = path,
             name = name,
             onDismiss = { selectedAttachment = null },
+            actions = AttachmentDialogActions(
+                showView = true,
+                showEdit = false,
+                showDelete = false,
+                showShare = false
+            ),
             onViewClick = {
-                val file = File(path)
-                val authority = "${context.packageName}.fileprovider"
-                val uri = FileProvider.getUriForFile(context, authority, file)
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, context.contentResolver.getType(uri))
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                try {
-                    context.startActivity(intent)
-                } catch (e: ActivityNotFoundException) {
-                    Toast.makeText(context, "No se encontró una aplicación para abrir este archivo.", Toast.LENGTH_SHORT).show()
-                }
                 selectedAttachment = null
+                try {
+                    val file = File(path)
+                    if (!file.exists()) {
+                        Toast.makeText(context, "El archivo no existe", Toast.LENGTH_SHORT).show()
+                        return@AttachmentPreviewDialog
+                    }
+
+                    val authority = "${context.packageName}.fileprovider"
+                    val uri = FileProvider.getUriForFile(context, authority, file)
+                    val mimeType = context.contentResolver.getType(uri) ?: "*/*"
+
+                    val intent = Intent(Intent.ACTION_VIEW).apply {
+                        setDataAndType(uri, mimeType)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+
+                    // Verificar que hay una app que pueda manejar el intent
+                    if (intent.resolveActivity(context.packageManager) != null) {
+                        context.startActivity(intent)
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "No se encontró una aplicación para abrir este archivo.",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(
+                        context,
+                        "Error al abrir el archivo: ${e.message}",
+                        Toast.LENGTH_SHORT
+                    ).show()
+                }
             }
         )
     }
 
     if (reminder.attachments.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp), contentAlignment = Alignment.Center) {
             Text("No hay archivos adjuntos")
         }
     } else {
@@ -266,7 +308,7 @@ fun AttachmentGridItem(path: String, name: String, onClick: () -> Unit) {
                 } else {
                     val fallbackIcon = when (fileExtension) {
                         "pdf" -> Icons.Filled.PictureAsPdf
-                        else -> Icons.Filled.InsertDriveFile
+                        else -> Icons.AutoMirrored.Filled.InsertDriveFile
                     }
                     Icon(
                         imageVector = fallbackIcon,
@@ -289,7 +331,9 @@ fun AttachmentGridItem(path: String, name: String, onClick: () -> Unit) {
 @Composable
 fun AudiosTab(reminder: Reminder, audioRecorderHelper: AudioRecorderHelper) {
     if (reminder.audioRecordings.isEmpty()) {
-        Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp), contentAlignment = Alignment.Center) {
             Text("No hay grabaciones de audio")
         }
     } else {
@@ -313,68 +357,3 @@ fun AudiosTab(reminder: Reminder, audioRecorderHelper: AudioRecorderHelper) {
     }
 }
 
-@Composable
-fun AttachmentViewDialog(
-    path: String,
-    name: String,
-    onDismiss: () -> Unit,
-    onViewClick: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = MaterialTheme.shapes.large,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                val imageBitmap = remember(path) {
-                    try {
-                        BitmapFactory.decodeFile(path)?.asImageBitmap()
-                    } catch (e: Exception) {
-                        null
-                    }
-                }
-                val fileExtension = File(path).extension.lowercase(Locale.ROOT)
-                Box(modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(16f / 9f), contentAlignment = Alignment.Center) {
-                    if (imageBitmap != null && (fileExtension == "jpg" || fileExtension == "jpeg" || fileExtension == "png")) {
-                        Image(
-                            bitmap = imageBitmap,
-                            contentDescription = name,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize()
-                        )
-                    } else {
-                        val fallbackIcon = when (fileExtension) {
-                            "pdf" -> Icons.Filled.PictureAsPdf
-                            else -> Icons.Filled.InsertDriveFile
-                        }
-                        Icon(
-                            imageVector = fallbackIcon,
-                            contentDescription = "File type icon",
-                            modifier = Modifier.size(128.dp)
-                        )
-                    }
-                }
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    TextButton(onClick = onViewClick) {
-                        Text("Ver")
-                    }
-                }
-            }
-        }
-    }
-}

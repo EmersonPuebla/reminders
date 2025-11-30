@@ -1,10 +1,8 @@
 package com.example.reminders.ui.screens
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.net.Uri
-import android.provider.OpenableColumns
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -18,6 +16,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.InsertDriveFile
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,6 +32,9 @@ import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.SubcomposeAsyncImage
 import com.example.reminders.ui.AppViewModelProvider
+import com.example.reminders.ui.components.AttachmentDialogActions
+import com.example.reminders.ui.components.AttachmentPreviewDialog
+import com.example.reminders.ui.components.AudioPlayer
 import com.example.reminders.utils.AudioRecorderHelper
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -88,7 +90,7 @@ fun EditReminderView(
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
-        uri?.let {
+        uri?.let { it ->
             val fileName = getFileName(context, it) ?: "Archivo"
             val mimeType = context.contentResolver.getType(it)
             if (mimeType?.startsWith("audio/") == true) {
@@ -176,34 +178,64 @@ fun EditReminderView(
     )
 
     selectedAttachment?.let { (path, name) ->
-        AttachmentDetailDialog(
-            path = path,
-            name = name,
-            onDismiss = { selectedAttachment = null },
-            onViewClick = {
-                val file = File(path)
-                val authority = "${context.packageName}.fileprovider"
-                val uri = FileProvider.getUriForFile(context, authority, file)
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(uri, context.contentResolver.getType(uri))
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                }
-                try {
-                    context.startActivity(intent)
-                } catch (e: Exception) {
-                    Toast.makeText(context, "No se encontró una aplicación para abrir este archivo.", Toast.LENGTH_SHORT).show()
-                }
-                selectedAttachment = null
-            },
-            onEditClick = {
-                attachmentToRename = selectedAttachment
-                selectedAttachment = null
-            },
-            onDeleteClick = {
-                attachmentToDelete = selectedAttachment?.first
-                selectedAttachment = null
-            }
-        )
+        // NEW
+            AttachmentPreviewDialog(
+                path = path,
+                name = name,
+                onDismiss = { selectedAttachment = null },
+                actions = AttachmentDialogActions(
+                    showView = true,
+                    showEdit = true,
+                    showDelete = true,
+                    showShare = true
+                ),
+                onViewClick = {
+                    selectedAttachment = null // Cerrar primero
+                    try {
+                        val file = File(path)
+                        if (!file.exists()) {
+                            Toast.makeText(context, "El archivo no existe", Toast.LENGTH_SHORT).show()
+                            return@AttachmentPreviewDialog
+                        }
+
+                        val authority = "${context.packageName}.fileprovider"
+                        val uri = FileProvider.getUriForFile(context, authority, file)
+                        val mimeType = context.contentResolver.getType(uri) ?: "*/*"
+
+                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                            setDataAndType(uri, mimeType)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+
+                        // Verificar que hay una app que pueda manejar el intent
+                        if (intent.resolveActivity(context.packageManager) != null) {
+                            context.startActivity(intent)
+                        } else {
+                            Toast.makeText(
+                                context,
+                                "No se encontró una aplicación para abrir este archivo.",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(
+                            context,
+                            "Error al abrir el archivo: ${e.message}",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                },
+                onEditClick = {
+                    attachmentToRename = selectedAttachment
+                    selectedAttachment = null
+                },
+                onDeleteClick = {
+                    attachmentToDelete = selectedAttachment?.first
+                    selectedAttachment = null
+                },
+                onShareClick = { /* compartir */ }
+            )
     }
 
     Dialog(
@@ -609,6 +641,7 @@ fun EditReminderView(
                                 name = name,
                                 onClick = { selectedAttachment = path to name }
                             )
+
                         }
                     }
                 }
@@ -641,7 +674,7 @@ private fun EditableAttachmentGridItem(path: String, name: String, onClick: () -
                     modifier = Modifier.fillMaxSize(),
                     error = {
                         Icon(
-                            imageVector = Icons.Default.InsertDriveFile,
+                            imageVector = Icons.AutoMirrored.Filled.InsertDriveFile,
                             contentDescription = "File type icon",
                             modifier = Modifier.size(48.dp)
                         )
@@ -659,62 +692,3 @@ private fun EditableAttachmentGridItem(path: String, name: String, onClick: () -
     }
 }
 
-@Composable
-private fun AttachmentDetailDialog(
-    path: String,
-    name: String,
-    onDismiss: () -> Unit,
-    onViewClick: () -> Unit,
-    onEditClick: () -> Unit,
-    onDeleteClick: () -> Unit
-) {
-    Dialog(onDismissRequest = onDismiss) {
-        Card(
-            shape = RoundedCornerShape(16.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.padding(bottom = 16.dp)
-                )
-                SubcomposeAsyncImage(
-                    model = path,
-                    contentDescription = name,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .aspectRatio(16f / 9f),
-                    contentScale = ContentScale.Fit,
-                    error = {
-                        Icon(
-                            imageVector = Icons.Default.InsertDriveFile,
-                            contentDescription = "File type icon",
-                            modifier = Modifier.size(128.dp)
-                        )
-                    }
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    TextButton(onClick = onViewClick) {
-                        Text("Ver")
-                    }
-                    TextButton(onClick = onEditClick) {
-                        Text("Editar")
-                    }
-                    TextButton(onClick = onDeleteClick) {
-                        Text("Eliminar")
-                    }
-                }
-            }
-        }
-    }
-}

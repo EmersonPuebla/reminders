@@ -1,4 +1,4 @@
-package com.example.reminders.ui.screens
+package com.example.reminders.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Speed
-import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -149,40 +148,6 @@ fun AudioPlayer(
                         }
                     )
                 }
-            }
-        }
-    }
-}
-
-@Composable
-fun AttachmentItem(
-    attachmentName: String,
-    onViewClick: () -> Unit,
-    onDeleteClick: () -> Unit,
-    onEditClick: () -> Unit,
-    showButtons: Boolean = true
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onViewClick) { Icon(Icons.Filled.Visibility, "Ver archivo") }
-            Spacer(modifier = Modifier.width(16.dp))
-            Text(
-                text = attachmentName,
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.bodyLarge
-            )
-            if (showButtons) {
-                IconButton(onClick = onEditClick) { Icon(Icons.Filled.Edit, "Renombrar archivo") }
-                IconButton(onClick = onDeleteClick) { Icon(Icons.Filled.Delete, "Eliminar archivo") }
             }
         }
     }

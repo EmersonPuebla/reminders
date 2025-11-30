@@ -34,7 +34,7 @@ class ReminderListViewModel(private val remindersRepository: RemindersRepository
         }
     }
 
-    suspend fun updateRemindersOrder(orderedIds: List<Int>) {
+    fun updateRemindersOrder(orderedIds: List<Int>) {
         viewModelScope.launch {
             val currentReminders = reminderListUiState.value.itemList
 

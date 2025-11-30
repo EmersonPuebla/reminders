@@ -15,7 +15,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 
-class ReminderDetailViewModel(private val remindersRepository: RemindersRepository, private val savedStateHandle: SavedStateHandle, private val context: Context) : ViewModel() {
+class ReminderDetailViewModel(
+    private val remindersRepository: RemindersRepository,
+    private val savedStateHandle: SavedStateHandle,
+    private val context: Context
+) : ViewModel() {
 
     var reminderUiState by mutableStateOf(ReminderUiState())
         private set
