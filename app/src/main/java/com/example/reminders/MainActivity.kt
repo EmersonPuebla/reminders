@@ -17,6 +17,11 @@ import com.example.reminders.ui.AppViewModelProvider
 import com.example.reminders.ui.screens.*
 import com.example.reminders.ui.theme.RemindersTheme
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,11 +45,23 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun RemindersApp() {
     val navController = rememberNavController()
+    val animationDuration = 150
+    val animationSpec = tween<Float>(animationDuration)
+
     NavHost(navController = navController, startDestination = "reminders") {
-        composable("reminders") {
+        composable("reminders",
+            enterTransition = {
+                EnterTransition.None
+            },
+            popExitTransition = {
+                ExitTransition.None
+            }
+        ) {
             ReminderListScreen(
+                navController = navController,
                 onSettingsClick = { navController.navigate("settings") }
             )
+
         }
         dialog(
             "create_reminder",
@@ -59,7 +76,21 @@ fun RemindersApp() {
         ) {
             EditReminderView(onBack = { navController.popBackStack() })
         }
-        composable("settings") {
+        composable("settings",
+            enterTransition = {
+                slideInHorizontally(
+                    animationSpec = tween(animationDuration),
+                    initialOffsetX = { fullWidth -> fullWidth }
+                )
+            },
+
+            popExitTransition = {
+                slideOutHorizontally(
+                    animationSpec = tween(animationDuration),
+                    targetOffsetX = { fullWidth -> fullWidth }
+                )
+            }
+        ) {
             SettingsScreen(
                 onBack = { navController.popBackStack() }
             )

@@ -19,6 +19,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
 import com.example.reminders.data.Reminder
 import com.example.reminders.ui.AppViewModelProvider
 import kotlinx.coroutines.launch
@@ -30,6 +31,7 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ReminderListScreen(
+    navController: NavController,
     onSettingsClick: () -> Unit,
     viewModel: ReminderListViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
@@ -43,7 +45,6 @@ fun ReminderListScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     var syncMessage by remember { mutableStateOf("") }
     var showSnackbar by remember { mutableStateOf(false) }
-    var showEditDialog by remember { mutableStateOf(false) }
     var showReadSheet by remember { mutableStateOf(false) }
     val readSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var selectedReminder by remember { mutableStateOf<Reminder?>(null) }
@@ -59,9 +60,7 @@ fun ReminderListScreen(
     }
 
     // Mostrar EditReminderView como Dialog directo
-    if (showEditDialog) {
-        EditReminderView(onBack = { showEditDialog = false })
-    }
+    //
 
     if (showReadSheet) {
         ModalBottomSheet(
@@ -69,9 +68,11 @@ fun ReminderListScreen(
             sheetState = readSheetState
         ) {
             selectedReminder?.let {
-                ReadReminderView(reminder = it, onEditClick = {
+                ReadReminderView(reminder = it, onEditClick = { reminderId ->
+                    // 1. Pide al BottomSheet que se cierre
                     showReadSheet = false
-                    showEditDialog = true
+                    // 2. Navega a la pantalla de edición
+                    navController.navigate("edit_reminder/$reminderId")
                 })
             }
         }
@@ -185,7 +186,9 @@ fun ReminderListScreen(
                     }
                 }
                 !reorderMode -> {
-                    FloatingActionButton(onClick = { showEditDialog = true }) {
+                    FloatingActionButton(onClick = {
+                        navController.navigate("create_reminder")
+                    }) {
                         Icon(Icons.Filled.Add, contentDescription = "Añadir Recordatorio")
                     }
                 }

@@ -187,7 +187,7 @@ fun EditReminderView(
                     showView = true,
                     showEdit = true,
                     showDelete = true,
-                    showShare = true
+                    showShare = false
                 ),
                 onViewClick = {
                     selectedAttachment = null // Cerrar primero

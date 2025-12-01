@@ -74,7 +74,7 @@ import java.util.Locale
 fun ReadReminderView(
     modifier: Modifier = Modifier,
     reminder: Reminder,
-    onEditClick: () -> Unit
+    onEditClick: (Int) -> Unit
 ) {
     val context = LocalContext.current
     val audioRecorderHelper = remember { AudioRecorderHelper(context) }
@@ -93,7 +93,7 @@ fun ReadReminderView(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         floatingActionButton = {
-            FloatingActionButton(onClick = onEditClick) {
+            FloatingActionButton(onClick = { onEditClick(reminder.id) }) {
                 Icon(Icons.Filled.Edit, contentDescription = "Editar")
             }
         }
