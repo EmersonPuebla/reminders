@@ -14,7 +14,7 @@ import java.io.FileOutputStream
 
 @Composable
 fun HandleDialogs(
-    uiState: ReminderUiState, viewModel: ReminderDetailViewModel, recordingToDelete: String?, onDismissRecordingDelete: () -> Unit, showNameAudioDialog: Pair<String, String>?, onDismissNameAudio: () -> Unit, recordingToRename: Pair<String, String>?, onDismissRecordingRename: () -> Unit, attachmentToDelete: String?, onDismissAttachmentDelete: () -> Unit, showNameAttachmentDialog: Pair<Uri, String>?, onDismissNameAttachment: () -> Unit, attachmentToRename: Pair<String, String>?, onDismissAttachmentRename: () -> Unit) {
+    uiState: ReminderUiState, viewModel: EditReminderViewModel, recordingToDelete: String?, onDismissRecordingDelete: () -> Unit, showNameAudioDialog: Pair<String, String>?, onDismissNameAudio: () -> Unit, recordingToRename: Pair<String, String>?, onDismissRecordingRename: () -> Unit, attachmentToDelete: String?, onDismissAttachmentDelete: () -> Unit, showNameAttachmentDialog: Pair<Uri, String>?, onDismissNameAttachment: () -> Unit, attachmentToRename: Pair<String, String>?, onDismissAttachmentRename: () -> Unit) {
     val context = LocalContext.current
     if (recordingToDelete != null) {
         AlertDialog(onDismissRequest = onDismissRecordingDelete, title = { Text("Confirmar eliminación") }, text = { Text("¿Estás seguro de que deseas eliminar este audio?") }, confirmButton = { TextButton(onClick = { val updated = uiState.audioRecordings - recordingToDelete; viewModel.updateUiState(uiState.copy(audioRecordings = updated)); onDismissRecordingDelete() }) { Text("Eliminar") } }, dismissButton = { TextButton(onClick = onDismissRecordingDelete) { Text("Cancelar") } })

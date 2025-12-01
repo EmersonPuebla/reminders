@@ -5,7 +5,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -18,14 +17,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.example.reminders.data.Reminder
-import com.example.reminders.data.network.WeatherResponse
 import com.example.reminders.ui.AppViewModelProvider
 import com.google.accompanist.permissions.ExperimentalPermissionsApi
 import com.google.accompanist.permissions.rememberPermissionState
@@ -37,10 +34,10 @@ import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalPermissionsApi::class)
 @Composable
-fun ReminderListScreen(
+fun ListReminderScreen(
     navController: NavController,
     onSettingsClick: () -> Unit,
-    viewModel: ReminderListViewModel = viewModel(factory = AppViewModelProvider.Factory)
+    viewModel: ListReminderViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val reminderListUiState by viewModel.reminderListUiState.collectAsState()
     val weatherUiState by viewModel.weatherUiState.collectAsState()
@@ -90,7 +87,7 @@ fun ReminderListScreen(
             sheetState = readSheetState
         ) {
             selectedReminder?.let {
-                ReadReminderView(reminder = it, onEditClick = { reminderId ->
+                ReadReminderScreen(reminder = it, onEditClick = { reminderId ->
                     // 1. Pide al BottomSheet que se cierre
                     showReadSheet = false
                     // 2. Navega a la pantalla de edición

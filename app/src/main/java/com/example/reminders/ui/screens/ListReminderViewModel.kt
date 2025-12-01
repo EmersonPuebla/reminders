@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class ReminderListViewModel(
+class ListReminderViewModel(
     private val remindersRepository: RemindersRepository,
     private val weatherService: WeatherService,
     private val locationProvider: LocationProvider,

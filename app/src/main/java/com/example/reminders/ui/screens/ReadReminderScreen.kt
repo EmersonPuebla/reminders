@@ -71,7 +71,7 @@ import java.util.Locale
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun ReadReminderView(
+fun ReadReminderScreen(
     modifier: Modifier = Modifier,
     reminder: Reminder,
     onEditClick: (Int) -> Unit

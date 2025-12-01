@@ -19,8 +19,6 @@ import com.example.reminders.ui.theme.RemindersTheme
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -57,7 +55,7 @@ fun RemindersApp() {
                 ExitTransition.None
             }
         ) {
-            ReminderListScreen(
+            ListReminderScreen(
                 navController = navController,
                 onSettingsClick = { navController.navigate("settings") }
             )
@@ -67,14 +65,14 @@ fun RemindersApp() {
             "create_reminder",
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
-            EditReminderView(onBack = { navController.popBackStack() })
+            EditReminderScreen(onBack = { navController.popBackStack() })
         }
         dialog(
             route = "edit_reminder/{reminderId}",
             arguments = listOf(navArgument("reminderId") { type = NavType.IntType }),
             dialogProperties = DialogProperties(usePlatformDefaultWidth = false),
         ) {
-            EditReminderView(onBack = { navController.popBackStack() })
+            EditReminderScreen(onBack = { navController.popBackStack() })
         }
         composable("settings",
             enterTransition = {

@@ -15,7 +15,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.io.File
 
-class ReminderDetailViewModel(
+class EditReminderViewModel (
     private val remindersRepository: RemindersRepository,
     private val savedStateHandle: SavedStateHandle,
     private val context: Context

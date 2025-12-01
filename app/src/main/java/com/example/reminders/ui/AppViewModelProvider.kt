@@ -6,15 +6,15 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.reminders.RemindersApplication
-import com.example.reminders.ui.screens.ReminderDetailViewModel
-import com.example.reminders.ui.screens.ReminderListViewModel
+import com.example.reminders.ui.screens.EditReminderViewModel
+import com.example.reminders.ui.screens.ListReminderViewModel
 import com.example.reminders.ui.screens.SettingsViewModel
 import com.example.reminders.ui.screens.ReadReminderViewModel
 
 object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer {
-            ReminderListViewModel(
+            ListReminderViewModel(
                 remindersRepository = remindersApplication().container.remindersRepository,
                 weatherService = remindersApplication().container.weatherService,
                 locationProvider = remindersApplication().container.locationProvider,
@@ -22,7 +22,7 @@ object AppViewModelProvider {
             )
         }
         initializer {
-            ReminderDetailViewModel(
+            EditReminderViewModel(
                 remindersRepository = remindersApplication().container.remindersRepository,
                 savedStateHandle = this.createSavedStateHandle(),
                 context = remindersApplication().applicationContext
