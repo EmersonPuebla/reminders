@@ -15,7 +15,10 @@ object AppViewModelProvider {
     val Factory = viewModelFactory {
         initializer {
             ReminderListViewModel(
-                remindersApplication().container.remindersRepository
+                remindersRepository = remindersApplication().container.remindersRepository,
+                weatherService = remindersApplication().container.weatherService,
+                locationProvider = remindersApplication().container.locationProvider,
+                userPreferencesRepository = remindersApplication().container.userPreferencesRepository
             )
         }
         initializer {

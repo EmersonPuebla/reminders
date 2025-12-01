@@ -4,11 +4,14 @@ import android.content.Context
 import androidx.work.WorkManager
 import com.example.reminders.data.network.ApiConnectionService
 import com.example.reminders.data.network.ApiService
+import com.example.reminders.data.network.WeatherService
 
 interface AppContainer {
     val remindersRepository: RemindersRepository
     val userPreferencesRepository: UserPreferencesRepository
     val apiService: ApiService
+    val weatherService: WeatherService
+    val locationProvider: LocationProvider
 }
 
 class AppDataContainer(private val context: Context) : AppContainer {
@@ -23,6 +26,13 @@ class AppDataContainer(private val context: Context) : AppContainer {
 
     override val apiService: ApiService
         get() = apiConnectionService.apiService
+
+    override val weatherService: WeatherService
+        get() = apiConnectionService.weatherService
+
+    override val locationProvider: LocationProvider by lazy {
+        LocationProvider(context)
+    }
 
     private val workManager: WorkManager by lazy {
         WorkManager.getInstance(context)

@@ -26,6 +26,33 @@ class ApiConnectionService(
         createApiService()
     }
 
+    val weatherService: WeatherService by lazy {
+        createWeatherService()
+    }
+
+    private fun createWeatherService(): WeatherService {
+        val loggingInterceptor = HttpLoggingInterceptor { message ->
+            Log.d("OkHttp", message)
+        }.apply {
+            level = HttpLoggingInterceptor.Level.BODY
+        }
+
+        val httpClient = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(15, TimeUnit.SECONDS)
+            .writeTimeout(15, TimeUnit.SECONDS)
+            .addInterceptor(loggingInterceptor)
+            .build()
+
+        val retrofit = Retrofit.Builder()
+            .baseUrl("https://api.openweathermap.org/data/2.5/")
+            .client(httpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+
+        return retrofit.create(WeatherService::class.java)
+    }
+
     private fun createApiService(): ApiService {
         Log.d("ApiConnectionService", "Creando cliente API con interceptor dinámico de URL")
 

@@ -1,5 +1,8 @@
 package com.example.reminders.ui.screens
 
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
@@ -20,15 +23,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import coil.compose.AsyncImage
 import com.example.reminders.data.Reminder
+import com.example.reminders.data.network.WeatherResponse
 import com.example.reminders.ui.AppViewModelProvider
+import com.google.accompanist.permissions.ExperimentalPermissionsApi
+import com.google.accompanist.permissions.rememberPermissionState
 import kotlinx.coroutines.launch
 import org.burnoutcrew.reorderable.*
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class, ExperimentalPermissionsApi::class)
 @Composable
 fun ReminderListScreen(
     navController: NavController,
@@ -36,6 +43,7 @@ fun ReminderListScreen(
     viewModel: ReminderListViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val reminderListUiState by viewModel.reminderListUiState.collectAsState()
+    val weatherUiState by viewModel.weatherUiState.collectAsState()
     var searchQuery by remember { mutableStateOf("") }
     val filteredReminders = reminderListUiState.itemList.filter { it.title.contains(searchQuery, ignoreCase = true) }
     var selectionMode by remember { mutableStateOf(false) }
@@ -51,6 +59,20 @@ fun ReminderListScreen(
     var reorderMode by remember { mutableStateOf(false) }
     var reorderedList by remember { mutableStateOf(filteredReminders) }
     val coroutineScope = rememberCoroutineScope()
+
+    val locationPermissionState = rememberPermissionState(Manifest.permission.ACCESS_COARSE_LOCATION)
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (isGranted) {
+            viewModel.fetchWeather()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        launcher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+    }
 
     // Actualizar la lista reordenada cuando cambia filteredReminders
     LaunchedEffect(filteredReminders) {
@@ -199,6 +221,7 @@ fun ReminderListScreen(
         Column(
             modifier = Modifier.padding(padding)
         ) {
+            WeatherComposable(weatherUiState)
             if (!reorderMode) {
                 Row(
                     modifier = Modifier
@@ -316,6 +339,39 @@ fun ReminderListScreen(
         }
     }
 }
+
+@Composable
+fun WeatherComposable(weatherUiState: WeatherUiState) {
+    when (weatherUiState) {
+        is WeatherUiState.Loading -> {
+            CircularProgressIndicator()
+        }
+        is WeatherUiState.Success -> {
+            val weather = weatherUiState.weather
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                AsyncImage(
+                    model = "https://openweathermap.org/img/wn/${weather.weather[0].icon}@2x.png",
+                    contentDescription = weather.weather[0].description,
+                    modifier = Modifier.size(50.dp)
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Column {
+                    Text(text = "${weather.main.temp}°C", style = MaterialTheme.typography.headlineSmall)
+                    Text(text = weather.name, style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+        is WeatherUiState.Error -> {
+            Text(text = weatherUiState.message)
+        }
+    }
+}
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable

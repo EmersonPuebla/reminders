@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.example.reminders.ui.screens.Theme
@@ -24,6 +25,11 @@ class UserPreferencesRepository(private val context: Context) {
         val SYNC_ENABLED = booleanPreferencesKey("sync_enabled")
         val SYNC_INTERVAL = intPreferencesKey("sync_interval")
         val SHOW_SYNC_BUTTON = booleanPreferencesKey("show_sync_button")
+        val WEATHER_TEMP = stringPreferencesKey("weather_temp")
+        val WEATHER_LOCATION = stringPreferencesKey("weather_location")
+        val WEATHER_DESCRIPTION = stringPreferencesKey("weather_description")
+        val WEATHER_ICON = stringPreferencesKey("weather_icon")
+        val WEATHER_TIMESTAMP = longPreferencesKey("weather_timestamp")
     }
 
     val theme: Flow<Theme> = context.dataStore.data
@@ -88,4 +94,36 @@ class UserPreferencesRepository(private val context: Context) {
             it[PreferencesKeys.SHOW_SYNC_BUTTON] = show
         }
     }
+    
+    val weatherCache: Flow<WeatherCache?> = context.dataStore.data
+        .map { preferences ->
+            val temp = preferences[PreferencesKeys.WEATHER_TEMP]
+            val location = preferences[PreferencesKeys.WEATHER_LOCATION]
+            val description = preferences[PreferencesKeys.WEATHER_DESCRIPTION]
+            val icon = preferences[PreferencesKeys.WEATHER_ICON]
+            val timestamp = preferences[PreferencesKeys.WEATHER_TIMESTAMP]
+            if (temp != null && location != null && description != null && icon != null && timestamp != null) {
+                WeatherCache(temp, location, description, icon, timestamp)
+            } else {
+                null
+            }
+        }
+
+    suspend fun saveWeatherCache(weatherCache: WeatherCache) {
+        context.dataStore.edit {
+            it[PreferencesKeys.WEATHER_TEMP] = weatherCache.temp
+            it[PreferencesKeys.WEATHER_LOCATION] = weatherCache.location
+            it[PreferencesKeys.WEATHER_DESCRIPTION] = weatherCache.description
+            it[PreferencesKeys.WEATHER_ICON] = weatherCache.icon
+            it[PreferencesKeys.WEATHER_TIMESTAMP] = weatherCache.timestamp
+        }
+    }
 }
+
+data class WeatherCache(
+    val temp: String,
+    val location: String,
+    val description: String,
+    val icon: String,
+    val timestamp: Long
+)
