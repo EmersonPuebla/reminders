@@ -89,10 +89,25 @@ class CashedRemindersRepository(
         // Fase 1: "Push" - Subir cambios locales a la nube
         Log.d("CashedRepository", "Fase 1: Subiendo cambios locales...")
         for (local in localReminders) {
-            val remote = remoteMap[local.id]
             if (local.isDeleted) continue // Los borrados se manejan en la Fase 3
 
-            if (remote == null) { // El recordatorio es nuevo para el servidor
+            // CORRECCIÓN: Identificar si el recordatorio es nuevo (ID=0) o ha sido modificado.
+            val remote = remoteMap[local.id]
+            val isNew = local.id == 0 // Asume que los nuevos elementos tienen ID 0
+
+            if (isNew) { // El recordatorio es completamente nuevo
+                try {
+                    Log.d("CashedRepository", "Creando en servidor (nuevo): ${local.title}")
+                    val createdDto = apiService.createReminder(toDto(local)).data
+                    if (createdDto != null) {
+                        // Una vez creado, borramos el local con ID 0 y guardamos el nuevo con el ID del servidor.
+                        reminderDao.deleteById(local.id)
+                        reminderDao.insert(toEntity(createdDto).copy(isSynced = true))
+                    }
+                } catch (e: Exception) {
+                    Log.e("CashedRepository", "Error creando '${local.title}': ${e.message}")
+                }
+            } else if (remote == null) { // El recordatorio es nuevo para el servidor pero ya tiene ID local
                 try {
                     Log.d("CashedRepository", "Creando en servidor: ${local.title}")
                     apiService.createReminder(toDto(local))
@@ -113,8 +128,11 @@ class CashedRemindersRepository(
 
         // Fase 2: "Pull" - Bajar cambios de la nube
         Log.d("CashedRepository", "Fase 2: Descargando cambios del servidor...")
+        val freshLocalReminders = reminderDao.getAllRemindersSync() // Volvemos a cargar para tener los IDs actualizados
+        val freshLocalMap = freshLocalReminders.associateBy { it.id }
+
         for (remote in remoteReminders) {
-            val local = localMap[remote.id]
+            val local = freshLocalMap[remote.id]
             if (local == null) { // Es nuevo para el dispositivo local
                 Log.d("CashedRepository", "Descargando nuevo: ${remote.title}")
                 reminderDao.insert(toEntity(remote).copy(isSynced = true))
@@ -127,13 +145,14 @@ class CashedRemindersRepository(
         // Fase 3: "Limpieza" - Sincronizar eliminaciones
         Log.d("CashedRepository", "Fase 3: Sincronizando eliminaciones...")
         val serverIds = remoteMap.keys
-        val localIds = localMap.values.filter { !it.isDeleted }.map { it.id }.toSet()
-        val idsToDelete = serverIds - localIds
+        val finalLocalReminders = reminderDao.getAllRemindersSync()
+        val localIdsToDelete = finalLocalReminders.filter { it.isDeleted && it.id != 0 }.map { it.id }.toSet()
 
-        idsToDelete.forEach { id ->
+        localIdsToDelete.forEach { id ->
             try {
                 Log.d("CashedRepository", "Eliminando de servidor: ID $id")
                 apiService.deleteReminder(id)
+                reminderDao.deleteById(id) // Eliminación definitiva del registro local
             } catch (e: Exception) {
                 Log.e("CashedRepository", "Error eliminando ID $id: ${e.message}")
             }
@@ -142,6 +161,7 @@ class CashedRemindersRepository(
         Log.i("CashedRepository", "Sincronización completada.")
         return SyncResult(success = true, message = "Sincronización completada exitosamente.")
     }
+
 
     override suspend fun getDeletedAndUnsynced(): List<Reminder> = reminderDao.getDeletedAndUnsynced()
     override suspend fun getUnsynced(): List<Reminder> = reminderDao.getUnsynced()
@@ -156,35 +176,53 @@ class CashedRemindersRepository(
 
     private fun toDto(reminder: Reminder): ReminderDto {
         return ReminderDto(
-            id = reminder.id,
+            id = if (reminder.id == 0) 0 else reminder.id, // Envía 0 para nuevos, o el ID existente
             title = reminder.title,
             description = reminder.description,
             notify = reminder.notify,
             notifyDate = converters.fromTimestamp(reminder.notifyDate),
             date = converters.fromTimestamp(reminder.date) ?: "",
             voiceNotes = reminder.audioRecordings.map { (filePath, name) ->
-                VoiceNoteDto(name = name, data = if (filePath.isNotEmpty()) {
+                val file = File(filePath)
+                val dataToSend = if (file.exists() && file.isFile) {
+                    // Si el archivo existe localmente, lo leemos y codificamos.
                     try {
-                        val file = File(filePath)
-                        if (file.exists()) Base64.encodeToString(file.readBytes(), Base64.DEFAULT) else filePath
+                        Log.d("CashedRepository", "Codificando nota de voz local: $name")
+                        Base64.encodeToString(file.readBytes(), Base64.DEFAULT)
                     } catch (e: Exception) {
-                        filePath
+                        Log.e("CashedRepository", "Error al leer el archivo de audio $filePath: ${e.message}")
+                        "" // Envía vacío si hay error de lectura
                     }
-                } else "")
+                } else {
+                    // Si no es un archivo local (es una URL/ID), se envía la data original (el path/URL).
+                    // Esto es clave para las actualizaciones, para no perder la referencia al archivo ya subido.
+                    Log.d("CashedRepository", "Reenviando referencia de nota de voz existente: $name")
+                    filePath
+                }
+                VoiceNoteDto(name = name, data = dataToSend)
             },
             attachments = reminder.attachments.map { (filePath, name) ->
-                AttachmentDto(name = name, data = if (filePath.isNotEmpty()) {
+                val file = File(filePath)
+                val dataToSend = if (file.exists() && file.isFile) {
+                    // Si el archivo existe localmente, lo leemos y codificamos.
                     try {
-                        val file = File(filePath)
-                        if (file.exists()) Base64.encodeToString(file.readBytes(), Base64.DEFAULT) else filePath
+                        Log.d("CashedRepository", "Codificando adjunto local: $name")
+                        Base64.encodeToString(file.readBytes(), Base64.DEFAULT)
                     } catch (e: Exception) {
-                        filePath
+                        Log.e("CashedRepository", "Error al leer el adjunto $filePath: ${e.message}")
+                        "" // Envía vacío si hay error de lectura
                     }
-                } else "")
+                } else {
+                    // Reenvía la referencia del adjunto ya existente en el servidor.
+                    Log.d("CashedRepository", "Reenviando referencia de adjunto existente: $name")
+                    filePath
+                }
+                AttachmentDto(name = name, data = dataToSend)
             },
             lastModified = reminder.lastModified
         )
     }
+
 
     private fun toEntity(dto: ReminderDto): Reminder {
         val audioDir = File(context.filesDir, "audio_recordings").apply { mkdirs() }
