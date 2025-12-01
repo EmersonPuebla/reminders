@@ -21,7 +21,7 @@ class UserPreferencesRepository(private val context: Context) {
         val THEME = stringPreferencesKey("theme")
         val SERVER_ADDRESS = stringPreferencesKey("server_address")
         val SERVER_PORT = stringPreferencesKey("server_port")
-        val USE_HTTPS = booleanPreferencesKey("use_https") // Nueva preferencia
+        val USE_HTTPS = booleanPreferencesKey("use_https")
         val SYNC_ENABLED = booleanPreferencesKey("sync_enabled")
         val SYNC_INTERVAL = intPreferencesKey("sync_interval")
         val SHOW_SYNC_BUTTON = booleanPreferencesKey("show_sync_button")

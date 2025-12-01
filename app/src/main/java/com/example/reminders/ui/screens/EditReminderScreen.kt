@@ -45,7 +45,7 @@ import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditReminderView(
+fun EditReminderScreen(
     onBack: () -> Unit,
     viewModel: EditReminderViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {

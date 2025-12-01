@@ -35,25 +35,3 @@ data class SyncResult(
     val deletedRemindersCount: Int = 0
 )
 
-class OfflineRemindersRepository(private val reminderDao: ReminderDao) : RemindersRepository {
-    override fun getAllReminders(): Flow<List<Reminder>> = reminderDao.getAllReminders()
-    override fun getReminder(id: Int): Flow<Reminder?> = reminderDao.getReminder(id)
-    override suspend fun insert(reminder: Reminder) = reminderDao.insert(reminder)
-    override suspend fun update(reminder: Reminder) = reminderDao.update(reminder)
-    override suspend fun delete(reminder: Reminder) = reminderDao.delete(reminder)
-    override suspend fun deleteReminders(ids: List<Int>) = reminderDao.deleteReminders(ids)
-    override suspend fun syncReminders() { /* No-op for offline repository */ }
-    override suspend fun syncRemindersAndFetchMissing(): SyncResult {
-        return SyncResult(false, "No hay conexión de API configurada")
-    }
-
-    override suspend fun getDeletedAndUnsynced(): List<Reminder> = emptyList()
-    override suspend fun getUnsynced(): List<Reminder> = emptyList()
-    override suspend fun markAsDeleted(id: Int, timestamp: Long) {}
-    override suspend fun deleteById(id: Int) {}
-    override suspend fun sync(): SyncResult = SyncResult(true, "Offline sync complete")
-
-    // Periodic sync is a no-op for the offline repository
-    override fun schedulePeriodicSync(interval: Long) {}
-    override fun cancelPeriodicSync() {}
-}
