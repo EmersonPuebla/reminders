@@ -11,6 +11,17 @@ interface RemindersRepository {
     suspend fun deleteReminders(ids: List<Int>)
     suspend fun syncReminders()
     suspend fun syncRemindersAndFetchMissing(): SyncResult
+
+    // Methods for synchronization worker
+    suspend fun getDeletedAndUnsynced(): List<Reminder>
+    suspend fun getUnsynced(): List<Reminder>
+    suspend fun markAsDeleted(id: Int, timestamp: Long)
+    suspend fun deleteById(id: Int)
+    suspend fun sync(): SyncResult
+
+    // Methods for periodic sync
+    fun schedulePeriodicSync(interval: Long)
+    fun cancelPeriodicSync()
 }
 
 /**
@@ -35,4 +46,14 @@ class OfflineRemindersRepository(private val reminderDao: ReminderDao) : Reminde
     override suspend fun syncRemindersAndFetchMissing(): SyncResult {
         return SyncResult(false, "No hay conexión de API configurada")
     }
+
+    override suspend fun getDeletedAndUnsynced(): List<Reminder> = emptyList()
+    override suspend fun getUnsynced(): List<Reminder> = emptyList()
+    override suspend fun markAsDeleted(id: Int, timestamp: Long) {}
+    override suspend fun deleteById(id: Int) {}
+    override suspend fun sync(): SyncResult = SyncResult(true, "Offline sync complete")
+
+    // Periodic sync is a no-op for the offline repository
+    override fun schedulePeriodicSync(interval: Long) {}
+    override fun cancelPeriodicSync() {}
 }

@@ -32,7 +32,8 @@ object AppViewModelProvider {
         initializer {
             SettingsViewModel(
                 userPreferencesRepository = remindersApplication().container.userPreferencesRepository,
-                apiService = remindersApplication().container.apiService
+                apiService = remindersApplication().container.apiService,
+                remindersRepository = remindersApplication().container.remindersRepository
             )
         }
     }

@@ -14,7 +14,8 @@ data class ReminderDto(
     val notifyDate: String? = null,
     val date: String,
     val voiceNotes: List<VoiceNoteDto> = emptyList(),
-    val attachments: List<AttachmentDto> = emptyList()
+    val attachments: List<AttachmentDto> = emptyList(),
+    val lastModified: Long
 )
 
 data class VoiceNoteDto(

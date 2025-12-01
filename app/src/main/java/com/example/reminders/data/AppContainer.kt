@@ -1,7 +1,7 @@
 package com.example.reminders.data
 
 import android.content.Context
-import android.util.Log
+import androidx.work.WorkManager
 import com.example.reminders.data.network.ApiConnectionService
 import com.example.reminders.data.network.ApiService
 
@@ -18,18 +18,23 @@ class AppDataContainer(private val context: Context) : AppContainer {
     }
 
     private val apiConnectionService: ApiConnectionService by lazy {
-        ApiConnectionService(context, userPreferencesRepository)
+        ApiConnectionService(userPreferencesRepository)
     }
 
     override val apiService: ApiService
-        get() = apiConnectionService.getApiService()
+        get() = apiConnectionService.apiService
+
+    private val workManager: WorkManager by lazy {
+        WorkManager.getInstance(context)
+    }
 
     override val remindersRepository: RemindersRepository by lazy {
         CashedRemindersRepository(
             reminderDao = AppDatabase.getDatabase(context).reminderDao(),
             apiService = apiService,
             userPreferencesRepository = userPreferencesRepository,
-            context = context
+            context = context,
+            workManager = workManager
         )
     }
 }

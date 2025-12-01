@@ -1,14 +1,17 @@
 package com.example.reminders.data.network
 
-import android.content.Context
 import android.util.Log
 import com.example.reminders.data.UserPreferencesRepository
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
+import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 
 /**
@@ -16,54 +19,15 @@ import java.util.concurrent.TimeUnit
  * Encapsula toda la lógica de construcción del cliente Retrofit y manejo de configuración.
  */
 class ApiConnectionService(
-    private val context: Context,
     private val userPreferencesRepository: UserPreferencesRepository
 ) {
 
-    private var apiService: ApiService? = null
-
-    /**
-     * Obtiene la instancia del servicio API, construyéndola si es necesaria.
-     * Reconstruye la instancia si la configuración del servidor ha cambiado.
-     */
-    fun getApiService(): ApiService {
-        val currentUrl = buildBaseUrl()
-        
-        // Si el servicio ya existe y la URL no ha cambiado, reutilizarlo
-        if (apiService != null && currentUrl == lastBaseUrl) {
-            return apiService!!
-        }
-        
-        lastBaseUrl = currentUrl
-        apiService = createApiService(currentUrl)
-        return apiService!!
+    val apiService: ApiService by lazy {
+        createApiService()
     }
 
-    /**
-     * Construye la URL base según la configuración guardada.
-     */
-    private fun buildBaseUrl(): String {
-        val address = runBlocking { userPreferencesRepository.serverAddress.first() }
-        val port = runBlocking { userPreferencesRepository.serverPort.first() }
-        val useHttps = runBlocking { userPreferencesRepository.useHttps.first() }
-
-        val protocol = if (useHttps) "https" else "http"
-        return if (address.isNotBlank()) {
-            if (port.isNotBlank()) {
-                "$protocol://$address:$port/"
-            } else {
-                "$protocol://$address/"
-            }
-        } else {
-            "http://10.0.2.2:8080/"
-        }
-    }
-
-    /**
-     * Crea una nueva instancia del cliente API con la URL base proporcionada.
-     */
-    private fun createApiService(baseUrl: String): ApiService {
-        Log.d("ApiConnectionService", "Creando cliente API con URL: $baseUrl")
+    private fun createApiService(): ApiService {
+        Log.d("ApiConnectionService", "Creando cliente API con interceptor dinámico de URL")
 
         val loggingInterceptor = HttpLoggingInterceptor { message ->
             Log.d("OkHttp", message)
@@ -76,10 +40,11 @@ class ApiConnectionService(
             .readTimeout(15, TimeUnit.SECONDS)
             .writeTimeout(15, TimeUnit.SECONDS)
             .addInterceptor(loggingInterceptor)
+            .addInterceptor(UrlInterceptor(userPreferencesRepository))
             .build()
 
         val retrofit = Retrofit.Builder()
-            .baseUrl(baseUrl)
+            .baseUrl("http://placeholder.url/") // URL base de marcador de posición, será reemplazada por el interceptor
             .client(httpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
@@ -89,15 +54,53 @@ class ApiConnectionService(
 
     /**
      * Invalida la instancia actual del servicio API.
-     * Útil cuando se cambian las configuraciones del servidor.
+     * En la nueva implementación con interceptor, esto no es estrictamente necesario.
      */
     fun invalidateApiService() {
-        apiService = null
-        lastBaseUrl = null
-        Log.d("ApiConnectionService", "Instancia del API invalidada")
+        // La URL se resuelve en cada petición gracias al interceptor.
+        Log.d("ApiConnectionService", "La invalidación del servicio no es necesaria con la URL dinámica.")
     }
+}
 
-    companion object {
-        private var lastBaseUrl: String? = null
+private class UrlInterceptor(
+    private val userPreferencesRepository: UserPreferencesRepository
+) : Interceptor {
+
+    @Throws(IOException::class)
+    override fun intercept(chain: Interceptor.Chain): Response {
+        val originalRequest = chain.request()
+
+        val baseUrl = runBlocking {
+            val address = userPreferencesRepository.serverAddress.first()
+            val port = userPreferencesRepository.serverPort.first()
+            val useHttps = userPreferencesRepository.useHttps.first()
+
+            val protocol = if (useHttps) "https" else "http"
+            if (address.isNotBlank()) {
+                if (port.isNotBlank()) {
+                    "$protocol://$address:$port/"
+                } else {
+                    "$protocol://$address/"
+                }
+            } else {
+                "http://10.0.2.2:8080/" // Valor por defecto para el emulador
+            }
+        }.toHttpUrlOrNull()
+
+        if (baseUrl != null) {
+            val newUrl = originalRequest.url.newBuilder()
+                .scheme(baseUrl.scheme)
+                .host(baseUrl.host)
+                .port(baseUrl.port)
+                .build()
+
+            val newRequest = originalRequest.newBuilder()
+                .url(newUrl)
+                .build()
+
+            return chain.proceed(newRequest)
+        }
+
+        return chain.proceed(originalRequest)
     }
 }

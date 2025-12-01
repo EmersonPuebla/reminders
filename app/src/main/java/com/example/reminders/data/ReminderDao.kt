@@ -31,9 +31,22 @@ interface ReminderDao {
     @Query("SELECT * FROM reminders WHERE id = :id")
     fun getReminder(id: Int): Flow<Reminder?>
 
-    @Query("SELECT * FROM reminders ORDER BY sortOrder ASC, date ASC")
+    @Query("SELECT * FROM reminders WHERE isDeleted = 0 ORDER BY sortOrder ASC, date ASC")
     fun getAllReminders(): Flow<List<Reminder>>
 
     @Query("SELECT * FROM reminders ORDER BY date DESC")
     suspend fun getAllRemindersSync(): List<Reminder>
+
+    // Queries for synchronization
+    @Query("SELECT * FROM reminders WHERE isDeleted = 1 AND isSynced = 0")
+    suspend fun getDeletedAndUnsynced(): List<Reminder>
+
+    @Query("SELECT * FROM reminders WHERE isSynced = 0 AND isDeleted = 0")
+    suspend fun getUnsynced(): List<Reminder>
+
+    @Query("UPDATE reminders SET isDeleted = 1, isSynced = 0, lastModified = :timestamp WHERE id = :id")
+    suspend fun markAsDeleted(id: Int, timestamp: Long)
+
+    @Query("DELETE FROM reminders WHERE id = :id")
+    suspend fun deleteById(id: Int)
 }

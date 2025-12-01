@@ -32,7 +32,7 @@ class ReminderDetailViewModel(
     private val reminderId: Int? = savedStateHandle["reminderId"]
 
     init {
-        if (reminderId != null) {
+        if (reminderId != null && reminderId != 0) { // Un ID de 0 indica un nuevo recordatorio
             viewModelScope.launch {
                 val loadedState = remindersRepository.getReminder(reminderId)
                     .filterNotNull()
@@ -47,11 +47,16 @@ class ReminderDetailViewModel(
     }
 
     fun updateUiState(newReminderUiState: ReminderUiState) {
-        reminderUiState = newReminderUiState
+        reminderUiState = newReminderUiState.copy(lastModified = System.currentTimeMillis())
     }
 
     suspend fun saveReminder() {
-        remindersRepository.insert(reminderUiState.toReminder())
+        val reminderToSave = reminderUiState.toReminder()
+        if (reminderToSave.id == 0) {
+            remindersRepository.insert(reminderToSave)
+        } else {
+            remindersRepository.update(reminderToSave)
+        }
     }
 
     fun copyFileToInternalStorage(uri: Uri, directory: String, fileName: String): String? {
@@ -77,7 +82,8 @@ data class ReminderUiState(
     val notify: Boolean = false,
     val notifyDate: Long = 0L,
     val audioRecordings: Map<String, String> = emptyMap(),
-    val attachments: Map<String, String> = emptyMap()
+    val attachments: Map<String, String> = emptyMap(),
+    val lastModified: Long = 0L
 )
 
 fun ReminderUiState.toReminder(): Reminder = Reminder(
@@ -88,7 +94,8 @@ fun ReminderUiState.toReminder(): Reminder = Reminder(
     notify = notify,
     notifyDate = notifyDate,
     audioRecordings = audioRecordings,
-    attachments = attachments
+    attachments = attachments,
+    lastModified = lastModified
 )
 
 fun Reminder.toReminderUiState(): ReminderUiState = ReminderUiState(
@@ -99,5 +106,6 @@ fun Reminder.toReminderUiState(): ReminderUiState = ReminderUiState(
     notify = notify,
     notifyDate = notifyDate ?: 0L,
     audioRecordings = audioRecordings,
-    attachments = attachments
+    attachments = attachments,
+    lastModified = lastModified
 )
