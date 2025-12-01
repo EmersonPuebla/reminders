@@ -47,7 +47,7 @@ import java.util.*
 @Composable
 fun EditReminderView(
     onBack: () -> Unit,
-    viewModel: ReminderDetailViewModel = viewModel(factory = AppViewModelProvider.Factory)
+    viewModel: EditReminderViewModel = viewModel(factory = AppViewModelProvider.Factory)
 ) {
     val coroutineScope = rememberCoroutineScope()
     val uiState = viewModel.reminderUiState
