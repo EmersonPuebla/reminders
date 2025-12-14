@@ -276,6 +276,7 @@ fun EditReminderScreen(
                             Icon(Icons.Default.AttachFile, contentDescription = "Adjuntar archivo")
                         }
 
+                        /*
                         Button(
                             onClick = { cameraPermissionLauncher.launch(Manifest.permission.CAMERA) },
                             modifier = Modifier.size(64.dp),
@@ -283,6 +284,7 @@ fun EditReminderScreen(
                         ) {
                             Icon(Icons.Default.CameraAlt, contentDescription = "Tomar foto")
                         }
+                         */
 
                         Button(
                             onClick = {
