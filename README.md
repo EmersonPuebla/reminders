@@ -35,9 +35,9 @@
 | Recurso | Método | Endpoint | CRUD |
 | :--- | :--- | :--- | :--- |
 | **Reminder** | `POST` | `/api/v1/reminder` | **C**reate |
-| **Reminder** | `GET` | `/api/v1/reminder/{uuid}` | **R**ead |
-| **Reminder** | `PUT` | `/api/v1/reminder/{uuid}` | **U**pdate |
-| **Reminder** | `DELETE` | `/api/v1/reminder/{uuid}` | **D**elete |
+| **Reminder** | `GET` | `/api/v1/reminder/{id}` | **R**ead |
+| **Reminder** | `PUT` | `/api/v1/reminder/{id}` | **U**pdate |
+| **Reminder** | `DELETE` | `/api/v1/reminder/{id}` | **D**elete |
 
 ### Endpoints Externos
 
