@@ -13,7 +13,7 @@
 * **Gestión de Recordatorios (CRUD):** Permite crear, obtener, actualizar y marcar como eliminados los recordatorios (`Reminder`).
 * **Gestión de Recursos Relacionados:** Manejo de archivos adjuntos (`Attachment`) y grabaciones de voz (`Audio`).
 * **Estandarización de Respuestas:** Todas las respuestas de la API (`2xx`, `4xx`, `5xx`) utilizan un formato estandarizado (`ApiResponse`/`ApiErrorResponse`).
-* **Soft Delete:** Los datos se marcan como eliminados (`isDeleted: true`).
+* **Delete:** Los datos se marcan como eliminados (`isDeleted: true`).
 
 ### Aplicación Móvil (Android)
 * **CRUD de Recordatorios:** Interfaz completa para la creación, visualización, edición y eliminación de recordatorios.
@@ -38,8 +38,6 @@
 | **Reminder** | `GET` | `/api/v1/reminder/{uuid}` | **R**ead |
 | **Reminder** | `PUT` | `/api/v1/reminder/{uuid}` | **U**pdate |
 | **Reminder** | `DELETE` | `/api/v1/reminder/{uuid}` | **D**elete |
-| **Audio** | `POST` | `/api/v1/audio` | **C**reate |
-| **Attachment**| `POST` | `/api/v1/attachment` | **C**reate |
 
 ### Endpoints Externos
 
@@ -56,7 +54,7 @@
 
 ### Backend (Spring Boot / Kotlin)
 1.  **Clonar el repositorio:** `git clone https://github.com/EmersonPuebla/reminders_backend.git`
-2.  **Ejecutar:** Iniciar la aplicación desde el IDE (IntelliJ/VS Code) o usando `mvn spring-boot:run`.
+2.  **Ejecutar:** Iniciar la aplicación desde el IDE (IntelliJ/VS Code) o usando `./gradlew bootRun`.
 3.  El servicio estará disponible en `http://localhost:8080`.
 
 ### Aplicación Móvil (Android Studio)
